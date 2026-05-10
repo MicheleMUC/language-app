@@ -30,24 +30,29 @@ const RECORDING_OPTIONS = IS_ANDROID
       web: { mimeType: "audio/wav" },
     };
 
-// iOS WAV files start with a 44-byte header; Android AAC-ADTS has no header.
 const HEADER_BYTES = IS_ANDROID ? 0 : 44;
 
 export const AUDIO_MIME_TYPE = IS_ANDROID ? "audio/aac" : "audio/pcm;rate=16000";
 
 export function useAudioCapture(onChunk: (base64: string, mimeType: string) => void) {
-  const recorder = useAudioRecorder(RECORDING_OPTIONS);
-  // Keep a ref so the unmount cleanup can access it without being a dep.
+  // Track live recording state via the status listener — avoids stale closures
+  // and doesn't cause re-renders (ref, not state).
+  const isRecordingRef = useRef(false);
+
+  const recorder = useAudioRecorder(RECORDING_OPTIONS, (status) => {
+    isRecordingRef.current = status.isRecording ?? false;
+  });
+
+  // Keep a ref for cleanup so it works with [] deps without a stale closure.
   const recorderRef = useRef(recorder);
   recorderRef.current = recorder;
 
-  const recorderActiveRef = useRef(false);
+  const recorderStartedRef = useRef(false); // true once we have called record()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const capturingRef = useRef(false);
   const turnOffsetRef = useRef(0);
 
-  // [] deps: only runs on unmount — never mid-conversation.
-  // stop() is async; use .catch() so the promise rejection doesn't leak.
+  // Only runs on unmount — [] deps prevents mid-conversation cleanup.
   useEffect(() => {
     return () => {
       capturingRef.current = false;
@@ -55,23 +60,29 @@ export function useAudioCapture(onChunk: (base64: string, mimeType: string) => v
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      if (recorderActiveRef.current) {
-        recorderActiveRef.current = false;
+      // stop() is async; .catch() prevents unhandled-rejection noise.
+      if (recorderStartedRef.current) {
+        recorderStartedRef.current = false;
         recorderRef.current.stop().catch(() => {});
       }
     };
   }, []);
 
+  // Brings the recorder to a fresh "recording" state. Resets the file offset
+  // so the interval starts reading from the new recording's beginning.
+  const activateRecorder = useCallback(async () => {
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    recorderStartedRef.current = true;
+    turnOffsetRef.current = HEADER_BYTES;
+    console.log("[audio] recorder started, offset reset to", HEADER_BYTES);
+  }, [recorder]);
+
   const start = useCallback(async () => {
-    if (!recorderActiveRef.current) {
-      // First press: start the recorder and keep it running for the whole
-      // conversation. We never call stop() between turns; only capturingRef
-      // gates whether chunks are forwarded.
+    if (!recorderStartedRef.current) {
+      // ── First PTT press ──
       await AudioModule.requestRecordingPermissionsAsync();
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      recorderActiveRef.current = true;
-      turnOffsetRef.current = HEADER_BYTES; // skip WAV header on first turn
+      await activateRecorder();
 
       intervalRef.current = setInterval(async () => {
         if (!capturingRef.current) return;
@@ -88,28 +99,34 @@ export function useAudioCapture(onChunk: (base64: string, mimeType: string) => v
           for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
           onChunk(btoa(binary), AUDIO_MIME_TYPE);
         } catch {
-          // File may not be flushed to disk yet
+          // File not yet flushed to disk
         }
       }, 100);
+    } else if (!isRecordingRef.current) {
+      // ── Subsequent press but OS stopped the recorder (e.g. audio focus) ──
+      console.log("[audio] recorder was stopped externally — re-preparing");
+      await activateRecorder();
     } else {
-      // Subsequent presses: snap the current file position so we only send
-      // audio recorded after the user presses PTT again.
+      // ── Subsequent press, recorder still live — snap offset to now ──
       const { uri } = recorder;
       if (uri) {
         try {
           const res = await fetch(uri);
           const buf = await res.arrayBuffer();
           turnOffsetRef.current = buf.byteLength;
-        } catch { /* keep existing offset */ }
+          console.log("[audio] offset snapped to", turnOffsetRef.current);
+        } catch {
+          console.warn("[audio] could not snap offset; keeping previous value");
+        }
+      } else {
+        console.warn("[audio] recorder.uri is null on subsequent press");
       }
     }
 
     capturingRef.current = true;
-  }, [recorder, onChunk]);
+  }, [recorder, activateRecorder, onChunk]);
 
   const stop = useCallback(async () => {
-    // Stop forwarding chunks; recorder keeps running so the native object
-    // stays alive and the next PTT press can reuse it without re-preparing.
     capturingRef.current = false;
   }, []);
 

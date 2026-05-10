@@ -161,6 +161,8 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onclose: (e: any) => {
                 console.log("Live session closed:", e?.code, e?.reason);
+                session = null;
+                send({ type: "error", message: `Session closed (${e?.code ?? "unknown"})` });
               },
             },
           });

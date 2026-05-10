@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
 import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/types";
@@ -69,6 +69,10 @@ export function useConversation(scenario: Scenario) {
 
   const start = useCallback(async () => {
     setStatus("connecting");
+    // Allow simultaneous recording + playback. On iOS this switches the
+    // AVAudioSession to PlayAndRecord — without it the recorder is interrupted
+    // the moment the model's audio starts playing.
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true }).catch(() => {});
     const socket = new ConversationSocket(handleMessage, () => setStatus("ended"));
     socketRef.current = socket;
     await socket.connect();
