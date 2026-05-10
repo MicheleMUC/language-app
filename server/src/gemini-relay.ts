@@ -20,6 +20,7 @@ export function handleConversationWs(ws: WebSocket) {
   let session: Session | null = null;
   let txBuffer = "";
   const audioChunks: Buffer[] = [];
+  let flushInterval: ReturnType<typeof setInterval> | null = null;
 
   function send(obj: unknown) {
     if (ws.readyState === ws.OPEN) {
@@ -48,7 +49,27 @@ export function handleConversationWs(ws: WebSocket) {
     return Buffer.concat([hdr, pcm]);
   }
 
+  function startFlushInterval() {
+    if (flushInterval) return;
+    flushInterval = setInterval(() => {
+      if (audioChunks.length > 0) {
+        const pcm = Buffer.concat(audioChunks);
+        const wav = makePcmWav(pcm);
+        send({ type: "audio", data: wav.toString("base64"), mimeType: "audio/wav" });
+        audioChunks.length = 0;
+      }
+    }, 400);
+  }
+
+  function stopFlushInterval() {
+    if (flushInterval) {
+      clearInterval(flushInterval);
+      flushInterval = null;
+    }
+  }
+
   function flushTurn() {
+    stopFlushInterval();
     if (audioChunks.length > 0) {
       const pcm = Buffer.concat(audioChunks);
       const wav = makePcmWav(pcm);
@@ -69,6 +90,7 @@ export function handleConversationWs(ws: WebSocket) {
     for (const part of parts) {
       if (part.inlineData?.data) {
         audioChunks.push(Buffer.from(part.inlineData.data, "base64"));
+        startFlushInterval();
       }
     }
 
@@ -183,6 +205,8 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
       case "talk_start": {
         if (!session) return;
         try {
+          stopFlushInterval();
+          audioChunks.length = 0; // discard any buffered AI audio from previous turn
           session.sendRealtimeInput({ activityStart: {} });
           send({ type: "interrupt" }); // tell client to stop current playback
         } catch (e) {
@@ -217,6 +241,7 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
       }
 
       case "end":
+        stopFlushInterval();
         try {
           await session?.close();
         } catch { /* ignore */ }
@@ -228,6 +253,7 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
   });
 
   ws.on("close", async () => {
+    stopFlushInterval();
     try {
       await session?.close();
     } catch { /* ignore */ }

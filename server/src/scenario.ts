@@ -17,20 +17,58 @@ Respond ONLY with a valid JSON object matching this schema exactly:
   "likelyPhrases": string[] (3-5 Italian phrases the character might say)
 }`;
 
+const KNOWN_INTENTS = [
+  "Talking to my Italian neighbors",
+  "Shopping at an Italian outdoor market",
+  "Ordering food and wine at an Italian trattoria",
+  "Ordering coffee and breakfast at an Italian bar",
+  "Buying a train ticket and asking for directions",
+  "Explaining symptoms to a doctor in Italian",
+  "A job interview at an Italian company",
+  "Making a phone call to book a restaurant reservation",
+  "Discussing academic topics with Italian professors",
+  "Debating current Italian political issues",
+  "Discussing Italian art and culture at a gallery",
+  "Viewing an apartment and negotiating rent in Italy",
+];
+
+const scenarioCache = new Map<string, object>();
+
+async function generateAndCache(intent: string): Promise<object> {
+  console.log(`[cache] generating intent: ${intent}`);
+  const result = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    config: { systemInstruction: SYSTEM_PROMPT },
+    contents: intent,
+  });
+  const raw = result.text ?? "{}";
+  const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
+  const data = JSON.parse(clean);
+  scenarioCache.set(intent, data);
+  return data;
+}
+
+async function warmCache() {
+  for (const intent of KNOWN_INTENTS) {
+    if (!scenarioCache.has(intent)) {
+      await generateAndCache(intent).catch((e) => console.error(`[cache] warm failed for "${intent}":`, e));
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  console.log("[cache] warm-up complete");
+}
+
+warmCache().catch(console.error);
+
 scenarioRouter.post("/", async (req, res) => {
   const { intent, userId } = req.body as { intent: string; userId: string };
   if (!intent) return res.status(400).json({ error: "intent required" });
 
   try {
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      config: { systemInstruction: SYSTEM_PROMPT },
-      contents: intent,
-    });
-
-    const raw = result.text ?? "{}";
-    const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
-    const data = JSON.parse(clean);
+    let data = scenarioCache.get(intent);
+    if (!data) {
+      data = await generateAndCache(intent);
+    }
 
     res.json({
       ...data,

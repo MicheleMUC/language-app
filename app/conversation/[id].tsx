@@ -177,8 +177,9 @@ export default function ConversationScreen() {
     router.back();
   }, [router]);
 
-  const isConnected = status === "active" || status === "talking";
+  const isConnected = status === "active" || status === "thinking" || status === "talking";
   const isTalking = status === "talking";
+  const isThinking = status === "thinking";
   const isEnded = status === "ended";
 
   return (
@@ -196,12 +197,13 @@ export default function ConversationScreen() {
           </View>
           <View style={styles.statusPill}>
             <View style={[styles.statusDot, {
-              backgroundColor: isTalking ? "#ff6d33" : isModelSpeaking ? "#dcc841" : isConnected ? "#4caf50" : "#594139"
+              backgroundColor: isTalking ? "#ff6d33" : isThinking ? "#7b5ea7" : isModelSpeaking ? "#dcc841" : isConnected ? "#4caf50" : "#594139"
             }]} />
             <Text style={styles.statusText}>
               {status === "idle" ? "Pronto"
                 : status === "connecting" ? "Connessione..."
                 : isTalking ? "Tocco tuo"
+                : isThinking ? "Sto elaborando"
                 : isModelSpeaking ? "Sta parlando"
                 : isConnected ? "Turno tuo"
                 : "Fine"}
@@ -238,16 +240,19 @@ export default function ConversationScreen() {
 
           {/* Turn indicator pill */}
           {isConnected && (
-            <View style={[styles.listeningPill, isTalking && styles.talkingPill, isModelSpeaking && styles.modelPill]}>
+            <View style={[styles.listeningPill, isTalking && styles.talkingPill, isThinking && styles.thinkingPill, isModelSpeaking && styles.modelPill]}>
               <View style={[styles.listeningDot,
                 isTalking && { backgroundColor: "#ff6d33" },
+                isThinking && { backgroundColor: "#7b5ea7" },
                 isModelSpeaking && { backgroundColor: "#dcc841" },
               ]} />
               <Text style={[styles.listeningText,
                 isTalking && { color: "#ff6d33" },
+                isThinking && { color: "#7b5ea7" },
                 isModelSpeaking && { color: "#dcc841" },
               ]}>
                 {isTalking ? "STAI PARLANDO..."
+                  : isThinking ? "STA ELABORANDO..."
                   : isModelSpeaking ? "STA RISPONDENDO..."
                   : "TIENI PREMUTO PER PARLARE"}
               </Text>
@@ -288,7 +293,7 @@ export default function ConversationScreen() {
               <TouchableOpacity
                 onPressIn={startTalking}
                 onPressOut={stopTalking}
-                disabled={status === "ended" || isModelSpeaking}
+                disabled={status === "ended" || isModelSpeaking || isThinking}
                 style={[
                   styles.micMainBtn,
                   isTalking && styles.micMainBtnActive,
@@ -439,6 +444,10 @@ const styles = StyleSheet.create({
   talkingPill: {
     backgroundColor: "rgba(255,109,51,0.1)",
     borderColor: "rgba(255,109,51,0.3)",
+  },
+  thinkingPill: {
+    backgroundColor: "rgba(123,94,167,0.1)",
+    borderColor: "rgba(123,94,167,0.3)",
   },
   modelPill: {
     backgroundColor: "rgba(220,200,65,0.1)",

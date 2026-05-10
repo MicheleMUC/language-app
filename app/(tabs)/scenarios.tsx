@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,12 @@ import { saveScenario } from "@/lib/supabase";
 import type { Scenario } from "@/types";
 
 type Difficulty = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
+
+const LOADING_MESSAGES = [
+  "Creo il personaggio...",
+  "Preparo la scena...",
+  "Scelgo il vocabolario...",
+];
 
 const ALL_SCENARIOS = [
   { label: "Talking to\nNeighbors", intent: "Talking to my Italian neighbors", bg: "#53397c", textColor: "#c5a8f3", emoji: "🏘️", difficulty: "A1" as const },
@@ -48,6 +54,13 @@ export default function ScenariosScreen() {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingIntent, setLoadingIntent] = useState<string | null>(null);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+
+  useEffect(() => {
+    if (!loading) { setLoadingMsgIdx(0); return; }
+    const id = setInterval(() => setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length), 1500);
+    return () => clearInterval(id);
+  }, [loading]);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -136,7 +149,12 @@ export default function ScenariosScreen() {
                     <Text style={styles.diffText}>{s.difficulty}</Text>
                   </View>
                   {isLoading ? (
-                    <ActivityIndicator size="large" color={s.textColor} style={{ marginVertical: 24 }} />
+                    <View style={{ marginVertical: 16, alignItems: "center", gap: 6 }}>
+                      <ActivityIndicator size="small" color={s.textColor} />
+                      <Text style={[styles.loadingMsg, { color: s.textColor }]}>
+                        {LOADING_MESSAGES[loadingMsgIdx]}
+                      </Text>
+                    </View>
                   ) : (
                     <Text style={styles.cardEmoji}>{s.emoji}</Text>
                   )}
@@ -213,4 +231,5 @@ const styles = StyleSheet.create({
   diffText: { fontSize: 11, fontWeight: "800", color: "rgba(255,255,255,0.85)", letterSpacing: 1 },
   cardEmoji: { fontSize: 44, alignSelf: "center", flex: 1, textAlignVertical: "center", paddingVertical: 8 },
   cardLabel: { fontSize: 16, fontWeight: "700", lineHeight: 22, letterSpacing: -0.3 },
+  loadingMsg: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, opacity: 0.85, textAlign: "center" },
 });

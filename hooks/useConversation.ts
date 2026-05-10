@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
 import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/types";
 
-type Status = "idle" | "connecting" | "active" | "talking" | "ended";
+type Status = "idle" | "connecting" | "active" | "thinking" | "talking" | "ended";
 
 export function useConversation(scenario: Scenario) {
   const [status, setStatus] = useState<Status>("idle");
@@ -16,14 +16,39 @@ export function useConversation(scenario: Scenario) {
   const player = useAudioPlayer(null);
   const playerStatus = useAudioPlayerStatus(player);
 
-  const playAudio = useCallback(async (base64: string, mimeType = "audio/wav") => {
+  // Audio queue for gapless sequential playback of streamed chunks
+  const audioQueueRef = useRef<Array<{ uri: string }>>([]);
+  const isDrainingRef = useRef(false);
+
+  // Ref-based drain avoids stale-closure issues with self-reference
+  const drainQueueRef = useRef<() => void>(() => {});
+  drainQueueRef.current = () => {
+    if (isDrainingRef.current) return;
+    const next = audioQueueRef.current.shift();
+    if (!next) return;
+    isDrainingRef.current = true;
     try {
-      player.replace({ uri: `data:${mimeType};base64,${base64}` });
+      player.replace(next);
       player.play();
     } catch {
-      // non-fatal
+      isDrainingRef.current = false;
+      drainQueueRef.current();
     }
-  }, [player]);
+  };
+  const drainQueue = useCallback(() => drainQueueRef.current(), []);
+
+  // Advance queue when current chunk finishes playing
+  useEffect(() => {
+    if (!playerStatus.playing) {
+      isDrainingRef.current = false;
+      drainQueue();
+    }
+  }, [playerStatus.playing, drainQueue]);
+
+  const playAudio = useCallback((base64: string, mimeType = "audio/wav") => {
+    audioQueueRef.current.push({ uri: `data:${mimeType};base64,${base64}` });
+    drainQueue();
+  }, [drainQueue]);
 
   const handleMessage = useCallback(
     (msg: WsServerMessage) => {
@@ -32,6 +57,7 @@ export function useConversation(scenario: Scenario) {
           setStatus("active");
           break;
         case "audio":
+          setStatus((prev) => prev === "thinking" ? "active" : prev);
           playAudio(msg.data, msg.mimeType ?? "audio/wav");
           break;
         case "transcript":
@@ -53,6 +79,8 @@ export function useConversation(scenario: Scenario) {
           setTimeout(() => setActiveVocab(null), 4000);
           break;
         case "interrupt":
+          audioQueueRef.current = [];
+          isDrainingRef.current = false;
           try { player.pause(); } catch { /* ignore */ }
           setPartialTranscript("");
           break;
@@ -90,10 +118,12 @@ export function useConversation(scenario: Scenario) {
   const stopTalking = useCallback(async () => {
     await stopCapture();
     socketRef.current?.send({ type: "talk_end" });
-    setStatus("active");
+    setStatus("thinking");
   }, [stopCapture]);
 
   const end = useCallback(async () => {
+    audioQueueRef.current = [];
+    isDrainingRef.current = false;
     await stopCapture();
     socketRef.current?.send({ type: "end" });
     socketRef.current?.close();
