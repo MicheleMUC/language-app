@@ -104,6 +104,11 @@ Start by greeting the user naturally in Italian.`;
             config: {
               systemInstruction,
               responseModalities: [Modality.AUDIO],
+              outputAudioTranscription: {},
+              realtimeInputConfig: {
+                // PTT mode: never auto-respond — only fire when we send turnComplete
+                automaticActivityDetection: { disabled: true },
+              },
               speechConfig: {
                 voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
               },
