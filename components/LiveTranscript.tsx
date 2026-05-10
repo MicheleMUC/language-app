@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { ScrollView, View, Text } from "react-native";
+import { ScrollView, View, Text, StyleSheet } from "react-native";
 import type { ConversationTurn } from "@/types";
 
 interface Props {
@@ -15,37 +15,25 @@ export function LiveTranscript({ turns }: Props) {
 
   if (turns.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-gray-400 text-sm">Conversation will appear here...</Text>
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>La conversazione apparirà qui...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView ref={scrollRef} className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+    <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false}>
       {turns.map((turn, i) => (
         <View
           key={i}
-          className={`mb-3 max-w-[85%] ${turn.role === "user" ? "self-end" : "self-start"}`}
+          style={[styles.bubble, turn.role === "user" ? styles.userWrap : styles.aiWrap]}
         >
-          <View
-            className={`rounded-2xl px-4 py-3 ${
-              turn.role === "user" ? "bg-primary" : "bg-white border border-gray-100"
-            }`}
-          >
-            <Text
-              className={`text-base font-medium ${
-                turn.role === "user" ? "text-white" : "text-gray-900"
-              }`}
-            >
+          <View style={turn.role === "user" ? styles.userBubble : styles.aiBubble}>
+            <Text style={turn.role === "user" ? styles.userText : styles.aiText}>
               {turn.italian}
             </Text>
             {turn.english && (
-              <Text
-                className={`text-xs mt-1 ${
-                  turn.role === "user" ? "text-blue-100" : "text-gray-400"
-                }`}
-              >
+              <Text style={turn.role === "user" ? styles.userSub : styles.aiSub}>
                 {turn.english}
               </Text>
             )}
@@ -55,3 +43,18 @@ export function LiveTranscript({ turns }: Props) {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  empty: { flex: 1, alignItems: "center", justifyContent: "center" },
+  emptyText: { color: "#594139", fontSize: 14 },
+  scroll: { flex: 1, paddingHorizontal: 16 },
+  bubble: { marginBottom: 12, maxWidth: "85%" },
+  userWrap: { alignSelf: "flex-end" },
+  aiWrap: { alignSelf: "flex-start" },
+  userBubble: { backgroundColor: "#ff6d33", borderRadius: 20, borderBottomRightRadius: 4, paddingHorizontal: 16, paddingVertical: 12 },
+  aiBubble: { backgroundColor: "#201f1f", borderRadius: 20, borderBottomLeftRadius: 4, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: "#353534" },
+  userText: { fontSize: 15, fontWeight: "500", color: "#5f1b00" },
+  aiText: { fontSize: 15, fontWeight: "500", color: "#e5e2e1" },
+  userSub: { fontSize: 12, color: "rgba(95,27,0,0.7)", marginTop: 4 },
+  aiSub: { fontSize: 12, color: "#e1bfb4", marginTop: 4 },
+});

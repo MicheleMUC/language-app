@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Animated, View, Text } from "react-native";
+import { Animated, View, Text, StyleSheet } from "react-native";
 import type { VocabItem } from "@/types";
 
 interface Props {
@@ -22,16 +22,34 @@ export function VocabHint({ item }: Props) {
   if (!item) return null;
 
   return (
-    <Animated.View style={{ opacity }} className="absolute top-4 left-4 right-4">
-      <View className="bg-accent/90 rounded-xl px-4 py-3 flex-row items-center justify-between">
-        <View>
-          <Text className="text-white font-bold text-base">{item.italian}</Text>
-          <Text className="text-green-100 text-sm">{item.english}</Text>
+    <Animated.View style={[styles.wrapper, { opacity }]}>
+      <View style={styles.card}>
+        <View style={styles.textWrap}>
+          <Text style={styles.italian}>{item.italian}</Text>
+          <Text style={styles.english}>{item.english}</Text>
         </View>
         {item.example && (
-          <Text className="text-green-100 text-xs max-w-[50%] text-right">{item.example}</Text>
+          <Text style={styles.example} numberOfLines={2}>{item.example}</Text>
         )}
       </View>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: { position: "absolute", top: 16, left: 16, right: 16 },
+  card: {
+    backgroundColor: "#dcc841",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  textWrap: { flex: 1 },
+  italian: { fontSize: 16, fontWeight: "700", color: "#373100" },
+  english: { fontSize: 13, color: "rgba(55,49,0,0.8)", marginTop: 2 },
+  example: { fontSize: 12, color: "rgba(55,49,0,0.7)", maxWidth: "45%", textAlign: "right" },
+});

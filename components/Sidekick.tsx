@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Modal,
   View,
@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   StyleSheet,
+  Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SidekickMessage } from "@/types";
@@ -24,6 +25,16 @@ interface Props {
 export function Sidekick({ messages, loading, onAsk, onClose }: Props) {
   const [question, setQuestion] = useState("");
   const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(400)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      tension: 65,
+      friction: 11,
+      useNativeDriver: true,
+    }).start();
+  }, [slideAnim]);
 
   const handleSubmit = () => {
     if (!question.trim() || loading) return;
@@ -31,68 +42,98 @@ export function Sidekick({ messages, loading, onAsk, onClose }: Props) {
     setQuestion("");
   };
 
+  const lastMessage = messages[messages.length - 1];
+
   return (
-    <Modal visible animationType="slide" transparent presentationStyle="overFullScreen" onRequestClose={onClose}>
+    <Modal
+      visible
+      animationType="none"
+      transparent
+      presentationStyle="overFullScreen"
+      onRequestClose={onClose}
+    >
       <View style={styles.backdrop}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={[styles.sheet, { paddingBottom: insets.bottom }]}
+          style={{ width: "100%" }}
         >
-          {/* Handle */}
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
-          </View>
-
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Sidekick</Text>
-              <Text style={styles.subtitle}>Ask me anything about the conversation</Text>
-            </View>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.doneBtn}>Done</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Messages */}
-          <ScrollView style={styles.messages} showsVerticalScrollIndicator={false}>
-            {messages.length === 0 && (
-              <Text style={styles.hint}>
-                Try asking:{"\n"}"Why did they use 'vorrei' here?"{"\n"}"How do I say 'I prefer the big one'?"
-              </Text>
-            )}
-            {messages.map((msg, i) => (
-              <View key={i} style={styles.msgGroup}>
-                <View style={styles.userBubble}>
-                  <Text style={styles.userText}>{msg.question}</Text>
-                </View>
-                <View style={styles.aiBubble}>
-                  <Text style={styles.aiText}>{msg.answer}</Text>
-                </View>
+          <Animated.View
+            style={[
+              styles.card,
+              { paddingBottom: insets.bottom + 16 },
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            {/* PRO TIP badge + icon */}
+            <View style={styles.badgeRow}>
+              <View style={styles.proBadge}>
+                <Text style={styles.proBadgeText}>PRO TIP</Text>
               </View>
-            ))}
-            {loading && <ActivityIndicator color="#7C3AED" style={{ marginBottom: 12 }} />}
-          </ScrollView>
+              <Text style={{ fontSize: 20 }}>💡</Text>
+            </View>
 
-          {/* Input */}
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="Ask in English..."
-              placeholderTextColor="#C4B5FD"
-              multiline
-              value={question}
-              onChangeText={setQuestion}
-            />
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={!question.trim() || loading}
-              style={[styles.sendBtn, (!question.trim() || loading) && styles.sendBtnDisabled]}
-            >
-              <Text style={styles.sendIcon}>↑</Text>
+            {/* Title */}
+            <Text style={styles.title}>AI Sidekick</Text>
+
+            {/* Explanation card (last AI answer or hint) */}
+            {lastMessage ? (
+              <View style={styles.explanationCard}>
+                <Text style={styles.explanationQuestion}>{lastMessage.question}</Text>
+                <Text style={styles.explanationAnswer}>{lastMessage.answer}</Text>
+              </View>
+            ) : messages.length === 0 ? (
+              <View style={styles.explanationCard}>
+                <Text style={styles.hintText}>
+                  Ask me anything about the conversation.{"\n\n"}
+                  Try: "Why did they use 'vorrei' here?" or "How do I say 'I prefer the big one'?"
+                </Text>
+              </View>
+            ) : null}
+
+            {loading && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color="#dcc841" />
+                <Text style={styles.loadingText}>Thinking...</Text>
+              </View>
+            )}
+
+            {/* Past messages (scrollable if more than 1) */}
+            {messages.length > 1 && (
+              <ScrollView style={styles.history} showsVerticalScrollIndicator={false}>
+                {messages.slice(0, -1).reverse().map((msg, i) => (
+                  <View key={i} style={styles.historyItem}>
+                    <Text style={styles.historyQ}>{msg.question}</Text>
+                    <Text style={styles.historyA}>{msg.answer}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Input row */}
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="Ask in English..."
+                placeholderTextColor="#c5a8f3"
+                multiline
+                value={question}
+                onChangeText={setQuestion}
+              />
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={!question.trim() || loading}
+                style={[styles.sendBtn, (!question.trim() || loading) && styles.sendBtnDisabled]}
+              >
+                <Text style={styles.sendIcon}>↑</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Close button */}
+            <TouchableOpacity onPress={onClose} style={styles.capito} activeOpacity={0.85}>
+              <Text style={styles.capitoText}>Capito!  ✓</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -100,24 +141,81 @@ export function Sidekick({ messages, loading, onAsk, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
-  sheet: { backgroundColor: "#F9F5FF", borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "80%" },
-  handleRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#C4B5FD" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#EDE9FE" },
-  title: { fontSize: 18, fontWeight: "700", color: "#7C3AED" },
-  subtitle: { fontSize: 12, color: "#A78BFA" },
-  doneBtn: { color: "#A78BFA", fontSize: 15 },
-  messages: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
-  hint: { color: "#C4B5FD", fontSize: 13, textAlign: "center", paddingTop: 24, lineHeight: 22 },
-  msgGroup: { marginBottom: 16 },
-  userBubble: { alignSelf: "flex-end", backgroundColor: "#fff", borderWidth: 1, borderColor: "#EDE9FE", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4, maxWidth: "85%" },
-  userText: { color: "#4C1D95", fontSize: 13 },
-  aiBubble: { alignSelf: "flex-start", backgroundColor: "#7C3AED", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, maxWidth: "90%" },
-  aiText: { color: "#fff", fontSize: 13, lineHeight: 20 },
-  inputRow: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, borderTopWidth: 1, borderTopColor: "#EDE9FE", gap: 8 },
-  input: { flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#DDD6FE", borderRadius: 20, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, fontSize: 14, color: "#1F2937", maxHeight: 96 },
-  sendBtn: { backgroundColor: "#7C3AED", borderRadius: 20, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  sendBtnDisabled: { backgroundColor: "#DDD6FE" },
-  sendIcon: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  backdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(19,19,19,0.7)",
+  },
+  card: {
+    backgroundColor: "#53397c",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    maxHeight: "85%",
+    borderWidth: 1,
+    borderColor: "rgba(214,186,255,0.2)",
+  },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  proBadge: {
+    backgroundColor: "#ff6d33",
+    borderRadius: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  proBadgeText: { fontSize: 11, fontWeight: "700", color: "#5f1b00", letterSpacing: 1 },
+  title: { fontSize: 28, fontWeight: "800", color: "#c5a8f3", marginBottom: 16 },
+  explanationCard: {
+    backgroundColor: "rgba(42,42,42,0.8)",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#dcc841",
+  },
+  explanationQuestion: { fontSize: 14, fontWeight: "700", color: "#e5e2e1", marginBottom: 8 },
+  explanationAnswer: { fontSize: 14, color: "#e1bfb4", lineHeight: 22 },
+  hintText: { fontSize: 14, color: "#c5a8f3", lineHeight: 22 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: "#c5a8f3" },
+  history: { maxHeight: 140, marginBottom: 12 },
+  historyItem: { marginBottom: 12, opacity: 0.6 },
+  historyQ: { fontSize: 12, fontWeight: "700", color: "#e5e2e1", marginBottom: 2 },
+  historyA: { fontSize: 12, color: "#e1bfb4", lineHeight: 18 },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+    marginBottom: 12,
+    backgroundColor: "rgba(32,31,31,0.6)",
+    borderRadius: 20,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "rgba(214,186,255,0.2)",
+  },
+  input: {
+    flex: 1,
+    color: "#e5e2e1",
+    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    maxHeight: 80,
+  },
+  sendBtn: {
+    backgroundColor: "#ff6d33",
+    borderRadius: 18,
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sendBtnDisabled: { backgroundColor: "rgba(255,109,51,0.3)" },
+  sendIcon: { color: "#5f1b00", fontSize: 18, fontWeight: "700" },
+  capito: {
+    backgroundColor: "#ff6d33",
+    borderRadius: 50,
+    paddingVertical: 18,
+    alignItems: "center",
+  },
+  capitoText: { fontSize: 17, fontWeight: "700", color: "#5f1b00" },
 });
