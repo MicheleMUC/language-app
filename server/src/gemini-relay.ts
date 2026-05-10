@@ -175,6 +175,9 @@ Start by greeting the user naturally in Italian.`;
         if (!session) return;
         try {
           session.sendRealtimeInput({ activityEnd: {} });
+          // activityEnd alone doesn't trigger generation on this model;
+          // sendClientContent with turnComplete is the explicit trigger.
+          session.sendClientContent({ turns: [], turnComplete: true });
         } catch (e) {
           console.error("talk_end error:", e);
         }
