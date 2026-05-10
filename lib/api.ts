@@ -1,9 +1,17 @@
+import Constants from "expo-constants";
 import type { Scenario } from "@/types";
 
-const BASE_URL = process.env.EXPO_PUBLIC_SERVER_URL ?? "http://localhost:3001";
+function getServerBase(): string {
+  if (process.env.EXPO_PUBLIC_SERVER_URL) return process.env.EXPO_PUBLIC_SERVER_URL;
+  // In Expo dev, hostUri is the Metro bundler address e.g. "192.168.1.10:8081"
+  // We use the same LAN IP but on port 3001 where our server listens.
+  const host = (Constants.expoConfig?.hostUri ?? "localhost:8081").split(":")[0];
+  return `http://${host}:3001`;
+}
 
 export async function generateScenario(intent: string, userId: string): Promise<Scenario> {
-  const res = await fetch(`${BASE_URL}/scenario`, {
+  const base = getServerBase();
+  const res = await fetch(`${base}/scenario`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ intent, userId }),
@@ -17,7 +25,8 @@ export async function querySidekick(
   recentTurns: Array<{ role: string; italian: string; english?: string }>,
   scenario: Scenario
 ): Promise<string> {
-  const res = await fetch(`${BASE_URL}/sidekick`, {
+  const base = getServerBase();
+  const res = await fetch(`${base}/sidekick`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question, recentTurns, scenario }),

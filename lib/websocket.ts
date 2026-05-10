@@ -1,23 +1,26 @@
+import Constants from "expo-constants";
 import type { WsClientMessage, WsServerMessage } from "@/types";
 
-const WS_URL = process.env.EXPO_PUBLIC_WS_URL ?? "ws://localhost:3001/ws";
+function getWsUrl(): string {
+  if (process.env.EXPO_PUBLIC_WS_URL) return process.env.EXPO_PUBLIC_WS_URL;
+  const host = (Constants.expoConfig?.hostUri ?? "localhost:8081").split(":")[0];
+  return `ws://${host}:3001/ws`;
+}
 
 export class ConversationSocket {
   private ws: WebSocket | null = null;
   private onMessage: (msg: WsServerMessage) => void;
   private onClose: () => void;
 
-  constructor(
-    onMessage: (msg: WsServerMessage) => void,
-    onClose: () => void
-  ) {
+  constructor(onMessage: (msg: WsServerMessage) => void, onClose: () => void) {
     this.onMessage = onMessage;
     this.onClose = onClose;
   }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(WS_URL);
+      const url = getWsUrl();
+      this.ws = new WebSocket(url);
       this.ws.onopen = () => resolve();
       this.ws.onerror = (e) => reject(e);
       this.ws.onclose = () => this.onClose();
