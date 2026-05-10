@@ -1,10 +1,6 @@
 import { useRef, useCallback } from "react";
 import { useAudioRecorder, AudioModule, AudioQuality, IOSOutputFormat } from "expo-audio";
 
-// PCM16 @ 16 kHz mono — what Gemini Live API expects.
-// iOS: linear PCM WAV natively via IOSOutputFormat.LINEARPCM.
-// Android: records AAC in an m4a container (MediaRecorder limitation);
-// the raw bytes are shipped and Gemini handles the container format.
 const PCM_OPTIONS = {
   extension: ".wav",
   sampleRate: 16000,
@@ -26,18 +22,20 @@ const PCM_OPTIONS = {
   },
 };
 
-const WAV_HEADER_BYTES = 44; // standard WAV header size
+const WAV_HEADER_BYTES = 44;
 
 export function useAudioCapture(onChunk: (base64: string) => void) {
   const recorder = useAudioRecorder(PCM_OPTIONS);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const byteOffsetRef = useRef(0);
+  const isRecordingRef = useRef(false); // guard against stop-before-start
 
   const start = useCallback(async () => {
     await AudioModule.requestRecordingPermissionsAsync();
     byteOffsetRef.current = 0;
     await recorder.prepareToRecordAsync();
     recorder.record();
+    isRecordingRef.current = true;
 
     intervalRef.current = setInterval(async () => {
       const uri = recorder.uri;
@@ -45,23 +43,18 @@ export function useAudioCapture(onChunk: (base64: string) => void) {
       try {
         const response = await fetch(uri);
         const buffer = await response.arrayBuffer();
-        // Skip WAV header on first read; only send bytes we haven't sent yet.
-        const startAt = byteOffsetRef.current === 0
-          ? WAV_HEADER_BYTES
-          : byteOffsetRef.current;
+        const startAt = byteOffsetRef.current === 0 ? WAV_HEADER_BYTES : byteOffsetRef.current;
         if (buffer.byteLength <= startAt) return;
         const newSlice = buffer.slice(startAt);
         byteOffsetRef.current = buffer.byteLength;
         const bytes = new Uint8Array(newSlice);
         let binary = "";
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         onChunk(btoa(binary));
       } catch {
         // recording may not yet have data
       }
-    }, 100); // 100 ms chunks (~1600 samples @ 16 kHz)
+    }, 100);
   }, [recorder, onChunk]);
 
   const stop = useCallback(async () => {
@@ -70,7 +63,13 @@ export function useAudioCapture(onChunk: (base64: string) => void) {
       intervalRef.current = null;
     }
     byteOffsetRef.current = 0;
-    await recorder.stop();
+    if (!isRecordingRef.current) return; // never started — skip stop()
+    isRecordingRef.current = false;
+    try {
+      await recorder.stop();
+    } catch {
+      // Android throws if recording duration was too short; safe to ignore
+    }
   }, [recorder]);
 
   return { start, stop };

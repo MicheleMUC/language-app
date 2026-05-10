@@ -125,7 +125,7 @@ export default function ConversationScreen() {
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
 
   const [showSidekick, setShowSidekick] = useState(false);
-  const { status, turns, activeVocab, start, startTalking, stopTalking, end } = useConversation(scenario);
+  const { status, turns, activeVocab, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const lastAiTurn = [...turns].reverse().find((t) => t.role === "assistant");
@@ -178,9 +178,16 @@ export default function ConversationScreen() {
             <Text style={styles.logo}>L'Italiano</Text>
           </View>
           <View style={styles.statusPill}>
-            <View style={[styles.statusDot, { backgroundColor: isTalking ? "#ff6d33" : isConnected ? "#dcc841" : "#594139" }]} />
+            <View style={[styles.statusDot, {
+              backgroundColor: isTalking ? "#ff6d33" : isModelSpeaking ? "#dcc841" : isConnected ? "#4caf50" : "#594139"
+            }]} />
             <Text style={styles.statusText}>
-              {status === "idle" ? "Pronto" : status === "connecting" ? "Connessione..." : isTalking ? "Stai parlando" : status === "active" ? "Ascolta" : "Fine"}
+              {status === "idle" ? "Pronto"
+                : status === "connecting" ? "Connessione..."
+                : isTalking ? "Tocco tuo"
+                : isModelSpeaking ? "Sta parlando"
+                : isConnected ? "Turno tuo"
+                : "Fine"}
             </Text>
           </View>
         </View>
@@ -195,7 +202,7 @@ export default function ConversationScreen() {
             </View>
             {/* Wave bars pill below avatar */}
             <View style={styles.waveWrap}>
-              <AudioWaveform active={isConnected} color={isTalking ? "#dcc841" : "#ff6d33"} />
+              <AudioWaveform active={isConnected} color={isTalking ? "#ff6d33" : isModelSpeaking ? "#dcc841" : "#594139"} />
             </View>
           </View>
 
@@ -212,12 +219,20 @@ export default function ConversationScreen() {
             </View>
           )}
 
-          {/* Status pill */}
+          {/* Turn indicator pill */}
           {isConnected && (
-            <View style={[styles.listeningPill, isTalking && styles.talkingPill]}>
-              <View style={[styles.listeningDot, isTalking && { backgroundColor: "#ff6d33" }]} />
-              <Text style={[styles.listeningText, isTalking && { color: "#ff6d33" }]}>
-                {isTalking ? "STAI PARLANDO..." : "TIENI PREMUTO PER PARLARE"}
+            <View style={[styles.listeningPill, isTalking && styles.talkingPill, isModelSpeaking && styles.modelPill]}>
+              <View style={[styles.listeningDot,
+                isTalking && { backgroundColor: "#ff6d33" },
+                isModelSpeaking && { backgroundColor: "#dcc841" },
+              ]} />
+              <Text style={[styles.listeningText,
+                isTalking && { color: "#ff6d33" },
+                isModelSpeaking && { color: "#dcc841" },
+              ]}>
+                {isTalking ? "STAI PARLANDO..."
+                  : isModelSpeaking ? "STA RISPONDENDO..."
+                  : "TIENI PREMUTO PER PARLARE"}
               </Text>
             </View>
           )}
@@ -255,8 +270,12 @@ export default function ConversationScreen() {
               <TouchableOpacity
                 onPressIn={startTalking}
                 onPressOut={stopTalking}
-                disabled={status === "ended"}
-                style={[styles.micMainBtn, isTalking && styles.micMainBtnActive]}
+                disabled={status === "ended" || isModelSpeaking}
+                style={[
+                  styles.micMainBtn,
+                  isTalking && styles.micMainBtnActive,
+                  isModelSpeaking && { opacity: 0.4 },
+                ]}
                 activeOpacity={0.8}
               >
                 <Text style={{ fontSize: 32 }}>🎙️</Text>
@@ -401,6 +420,10 @@ const styles = StyleSheet.create({
   talkingPill: {
     backgroundColor: "rgba(255,109,51,0.1)",
     borderColor: "rgba(255,109,51,0.3)",
+  },
+  modelPill: {
+    backgroundColor: "rgba(220,200,65,0.1)",
+    borderColor: "rgba(220,200,65,0.3)",
   },
   // Session review
   reviewOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "#131313", zIndex: 100 },

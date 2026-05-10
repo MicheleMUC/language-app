@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useAudioPlayer } from "expo-audio";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
 import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/types";
@@ -12,6 +12,7 @@ export function useConversation(scenario: Scenario) {
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
   const player = useAudioPlayer(null);
+  const playerStatus = useAudioPlayerStatus(player);
 
   const playAudio = useCallback(async (base64: string, mimeType = "audio/wav") => {
     try {
@@ -62,9 +63,11 @@ export function useConversation(scenario: Scenario) {
 
   const startTalking = useCallback(async () => {
     if (!socketRef.current) return;
+    // Stop any model audio so it doesn't speak over the user
+    try { player.pause(); } catch { /* ignore */ }
     setStatus("talking");
     await startCapture();
-  }, [startCapture]);
+  }, [startCapture, player]);
 
   const stopTalking = useCallback(async () => {
     await stopCapture();
@@ -80,5 +83,14 @@ export function useConversation(scenario: Scenario) {
     setStatus("ended");
   }, [stopCapture]);
 
-  return { status, turns, activeVocab, start, startTalking, stopTalking, end };
+  return {
+    status,
+    turns,
+    activeVocab,
+    isModelSpeaking: playerStatus.playing,
+    start,
+    startTalking,
+    stopTalking,
+    end,
+  };
 }
