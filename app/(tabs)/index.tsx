@@ -84,7 +84,11 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar} />
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => Alert.alert("Profilo", "Funzione in arrivo.")}
+              activeOpacity={0.7}
+            />
             <Text style={styles.logo}>L'Italiano</Text>
           </View>
           <View style={styles.bellBtn}>
@@ -135,7 +139,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Suggested Scenarios</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/scenarios")}>
                 <Text style={styles.seeAll}>See All →</Text>
               </TouchableOpacity>
             </View>

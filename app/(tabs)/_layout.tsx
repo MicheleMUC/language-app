@@ -5,6 +5,7 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: "none" } }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="history" />
+      <Tabs.Screen name="scenarios" />
     </Tabs>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { FloatingNav } from "@/components/FloatingNav";
 import { loadSessions } from "@/lib/supabase";
 import type { ConversationSession } from "@/types";
@@ -9,6 +10,7 @@ export default function HistoryScreen() {
   const [sessions, setSessions] = useState<ConversationSession[]>([]);
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   useEffect(() => {
     const load = async () => {
@@ -28,7 +30,11 @@ export default function HistoryScreen() {
       <SafeAreaView style={styles.safe} edges={["top"]}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.avatar} />
+          <TouchableOpacity
+            style={styles.avatar}
+            onPress={() => Alert.alert("Profilo", "Funzione in arrivo.")}
+            activeOpacity={0.7}
+          />
           <Text style={styles.logo}>L'Italiano</Text>
           <View style={styles.bellBtn}>
             <Text style={{ fontSize: 18, color: "#ffb59b" }}>🔔</Text>
@@ -59,7 +65,15 @@ export default function HistoryScreen() {
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 100 }}
             ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.sessionCard} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.sessionCard}
+                activeOpacity={0.8}
+                onPress={() =>
+                  router.push(
+                    `/session/${item.id}?sessionData=${encodeURIComponent(JSON.stringify(item))}`
+                  )
+                }
+              >
                 <View style={styles.sessionIcon}>
                   <Text style={{ fontSize: 22 }}>💬</Text>
                 </View>

@@ -5,12 +5,11 @@ import { useRouter } from "expo-router";
 const ITEMS = [
   { key: "home", icon: "🏠", filledIcon: "🏠", route: "/" as const },
   { key: "history", icon: "📚", filledIcon: "📚", route: "/(tabs)/history" as const },
-  { key: "saved", icon: "🔖", filledIcon: "🔖", route: null },
-  { key: "profile", icon: "👤", filledIcon: "👤", route: null },
+  { key: "scenarios", icon: "🗺️", filledIcon: "🗺️", route: "/(tabs)/scenarios" as const },
 ];
 
 interface Props {
-  active: "home" | "history" | "saved" | "profile";
+  active: "home" | "history" | "scenarios";
 }
 
 export function FloatingNav({ active }: Props) {

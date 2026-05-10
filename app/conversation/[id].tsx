@@ -7,6 +7,7 @@ import {
   Animated,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -147,6 +148,11 @@ export default function ConversationScreen() {
     }
   }, [start]);
 
+  useEffect(() => {
+    handleStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSidekick = useCallback(() => {
     setShowSidekick(true);
   }, []);
@@ -181,7 +187,11 @@ export default function ConversationScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar} />
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => Alert.alert("Profilo", "Funzione in arrivo.")}
+              activeOpacity={0.7}
+            />
             <Text style={styles.logo}>L'Italiano</Text>
           </View>
           <View style={styles.statusPill}>
@@ -260,16 +270,10 @@ export default function ConversationScreen() {
         {/* Control bar */}
         <View style={[styles.controlBar, { paddingBottom: insets.bottom + 24 }]}>
           {status === "idle" || status === "connecting" ? (
-            <TouchableOpacity
-              onPress={handleStart}
-              disabled={status === "connecting"}
-              style={[styles.startBtn, status === "connecting" && { opacity: 0.6 }]}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.startBtnText}>
-                {status === "connecting" ? "Connessione..." : "Inizia Conversazione  ▶"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.connectingBar}>
+              <ActivityIndicator size="small" color="#ff6d33" />
+              <Text style={styles.connectingText}>Connessione in corso...</Text>
+            </View>
           ) : (
             <View style={styles.controls}>
               <TouchableOpacity
@@ -406,8 +410,8 @@ const styles = StyleSheet.create({
   listeningDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ffb59b" },
   listeningText: { fontSize: 11, fontWeight: "700", color: "#ffb59b", letterSpacing: 3 },
   controlBar: { paddingHorizontal: 24, paddingTop: 8 },
-  startBtn: { backgroundColor: "#ff6d33", borderRadius: 50, paddingVertical: 20, alignItems: "center" },
-  startBtnText: { fontSize: 17, fontWeight: "700", color: "#5f1b00" },
+  connectingBar: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 20 },
+  connectingText: { fontSize: 15, fontWeight: "600", color: "#e1bfb4" },
   controls: {
     backgroundColor: "rgba(32,31,31,0.8)",
     borderRadius: 50,
