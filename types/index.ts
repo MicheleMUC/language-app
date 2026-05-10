@@ -43,8 +43,9 @@ export interface SidekickMessage {
 // WebSocket message types between app and Cloud Run relay
 export type WsClientMessage =
   | { type: "start"; scenarioId: string; scenario: Scenario }
-  | { type: "audio"; data: string } // base64 PCM16
-  | { type: "talk_end" }            // user released mic
+  | { type: "talk_start" }          // PTT pressed → activityStart to Gemini
+  | { type: "audio"; data: string } // base64 PCM16 chunks while PTT held
+  | { type: "talk_end" }            // PTT released → activityEnd to Gemini
   | { type: "end" };
 
 export type WsServerMessage =
@@ -52,4 +53,5 @@ export type WsServerMessage =
   | { type: "audio"; data: string; mimeType?: string } // base64 audio from Gemini
   | { type: "transcript"; role: "user" | "assistant"; text: string; italian: string }
   | { type: "vocab_hint"; item: VocabItem }
+  | { type: "interrupt" }           // model output was cut — stop playback now
   | { type: "error"; message: string };

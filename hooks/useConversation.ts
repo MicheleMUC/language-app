@@ -42,6 +42,9 @@ export function useConversation(scenario: Scenario) {
           setActiveVocab(msg.item);
           setTimeout(() => setActiveVocab(null), 4000);
           break;
+        case "interrupt":
+          try { player.pause(); } catch { /* ignore */ }
+          break;
       }
     },
     [playAudio]
@@ -63,11 +66,12 @@ export function useConversation(scenario: Scenario) {
 
   const startTalking = useCallback(async () => {
     if (!socketRef.current) return;
-    // Stop any model audio so it doesn't speak over the user
-    try { player.pause(); } catch { /* ignore */ }
+    // talk_start → server sends activityStart to Gemini (interrupts model output)
+    // and echoes back { type: "interrupt" } which pauses the player
+    socketRef.current.send({ type: "talk_start" });
     setStatus("talking");
     await startCapture();
-  }, [startCapture, player]);
+  }, [startCapture]);
 
   const stopTalking = useCallback(async () => {
     await stopCapture();

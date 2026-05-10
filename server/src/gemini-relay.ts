@@ -3,8 +3,9 @@ import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@go
 
 type ClientMsg =
   | { type: "start"; scenarioId: string; scenario: Record<string, unknown> }
+  | { type: "talk_start" }          // PTT pressed → activityStart
   | { type: "audio"; data: string } // base64 PCM16 @ 16 kHz mono
-  | { type: "talk_end" }            // user released mic → trigger model response
+  | { type: "talk_end" }            // PTT released → activityEnd
   | { type: "end" };
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
@@ -76,6 +77,11 @@ export function handleConversationWs(ws: WebSocket) {
       txBuffer += outTx.text;
     }
 
+    const inTx = message.serverContent?.inputTranscription;
+    if (inTx && "text" in inTx && typeof inTx.text === "string" && inTx.text.trim()) {
+      send({ type: "transcript", role: "user", italian: inTx.text.trim(), text: "" });
+    }
+
     if (message.serverContent?.turnComplete) {
       flushTurn();
     }
@@ -104,6 +110,7 @@ Start by greeting the user naturally in Italian.`;
             config: {
               systemInstruction,
               responseModalities: [Modality.AUDIO],
+              inputAudioTranscription: {},
               outputAudioTranscription: {},
               realtimeInputConfig: {
                 // PTT mode: never auto-respond — only fire when we send turnComplete
@@ -141,6 +148,17 @@ Start by greeting the user naturally in Italian.`;
         break;
       }
 
+      case "talk_start": {
+        if (!session) return;
+        try {
+          session.sendRealtimeInput({ activityStart: {} });
+          send({ type: "interrupt" }); // tell client to stop current playback
+        } catch (e) {
+          console.error("talk_start error:", e);
+        }
+        break;
+      }
+
       case "audio": {
         if (!session) return;
         try {
@@ -156,8 +174,7 @@ Start by greeting the user naturally in Italian.`;
       case "talk_end": {
         if (!session) return;
         try {
-          // Tell the model the user's turn is complete → triggers model response
-          session.sendClientContent({ turns: [], turnComplete: true });
+          session.sendRealtimeInput({ activityEnd: {} });
         } catch (e) {
           console.error("talk_end error:", e);
         }
