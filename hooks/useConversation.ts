@@ -4,7 +4,7 @@ import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
 import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/types";
 
-type Status = "idle" | "connecting" | "active" | "paused" | "ended";
+type Status = "idle" | "connecting" | "active" | "talking" | "ended";
 
 export function useConversation(scenario: Scenario) {
   const [status, setStatus] = useState<Status>("idle");
@@ -13,12 +13,12 @@ export function useConversation(scenario: Scenario) {
   const socketRef = useRef<ConversationSocket | null>(null);
   const player = useAudioPlayer(null);
 
-  const playAudioChunk = useCallback(async (base64: string, mimeType = "audio/wav") => {
+  const playAudio = useCallback(async (base64: string, mimeType = "audio/wav") => {
     try {
       player.replace({ uri: `data:${mimeType};base64,${base64}` });
       player.play();
     } catch {
-      // audio playback errors are non-fatal
+      // non-fatal
     }
   }, [player]);
 
@@ -29,41 +29,27 @@ export function useConversation(scenario: Scenario) {
           setStatus("active");
           break;
         case "audio":
-          playAudioChunk(msg.data, msg.mimeType ?? "audio/wav");
+          playAudio(msg.data, msg.mimeType ?? "audio/wav");
           break;
         case "transcript":
           setTurns((prev) => [
             ...prev,
-            {
-              role: msg.role,
-              italian: msg.italian,
-              english: msg.text,
-              timestamp: Date.now(),
-            },
+            { role: msg.role, italian: msg.italian, english: msg.text, timestamp: Date.now() },
           ]);
           break;
         case "vocab_hint":
           setActiveVocab(msg.item);
           setTimeout(() => setActiveVocab(null), 4000);
           break;
-        case "paused":
-          setStatus("paused");
-          break;
-        case "resumed":
-          setStatus("active");
-          break;
       }
     },
-    [playAudioChunk]
+    [playAudio]
   );
 
   const { start: startCapture, stop: stopCapture } = useAudioCapture(
-    useCallback(
-      (base64: string) => {
-        if (status === "active") socketRef.current?.sendAudio(base64);
-      },
-      [status]
-    )
+    useCallback((base64: string) => {
+      socketRef.current?.sendAudio(base64);
+    }, [])
   );
 
   const start = useCallback(async () => {
@@ -72,26 +58,27 @@ export function useConversation(scenario: Scenario) {
     socketRef.current = socket;
     await socket.connect();
     socket.send({ type: "start", scenarioId: scenario.id, scenario });
-    await startCapture();
-  }, [scenario, handleMessage, startCapture]);
+  }, [scenario, handleMessage]);
 
-  const pause = useCallback(() => {
-    socketRef.current?.send({ type: "pause" });
-    stopCapture();
-  }, [stopCapture]);
-
-  const resume = useCallback(async () => {
-    socketRef.current?.send({ type: "resume" });
+  const startTalking = useCallback(async () => {
+    if (!socketRef.current) return;
+    setStatus("talking");
     await startCapture();
   }, [startCapture]);
 
-  const end = useCallback(async () => {
-    socketRef.current?.send({ type: "end" });
+  const stopTalking = useCallback(async () => {
     await stopCapture();
+    socketRef.current?.send({ type: "talk_end" });
+    setStatus("active");
+  }, [stopCapture]);
+
+  const end = useCallback(async () => {
+    await stopCapture();
+    socketRef.current?.send({ type: "end" });
     socketRef.current?.close();
     socketRef.current = null;
     setStatus("ended");
   }, [stopCapture]);
 
-  return { status, turns, activeVocab, start, pause, resume, end };
+  return { status, turns, activeVocab, start, startTalking, stopTalking, end };
 }

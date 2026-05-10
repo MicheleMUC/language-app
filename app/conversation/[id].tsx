@@ -125,7 +125,7 @@ export default function ConversationScreen() {
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
 
   const [showSidekick, setShowSidekick] = useState(false);
-  const { status, turns, activeVocab, start, pause, resume, end } = useConversation(scenario);
+  const { status, turns, activeVocab, start, startTalking, stopTalking, end } = useConversation(scenario);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const lastAiTurn = [...turns].reverse().find((t) => t.role === "assistant");
@@ -139,14 +139,12 @@ export default function ConversationScreen() {
   }, [start]);
 
   const handleSidekick = useCallback(() => {
-    pause();
     setShowSidekick(true);
-  }, [pause]);
+  }, []);
 
-  const handleSidekickClose = useCallback(async () => {
+  const handleSidekickClose = useCallback(() => {
     setShowSidekick(false);
-    await resume();
-  }, [resume]);
+  }, []);
 
   const handleEnd = useCallback(async () => {
     await end();
@@ -166,7 +164,8 @@ export default function ConversationScreen() {
     router.back();
   }, [router]);
 
-  const isActive = status === "active";
+  const isConnected = status === "active" || status === "talking";
+  const isTalking = status === "talking";
   const isEnded = status === "ended";
 
   return (
@@ -179,9 +178,9 @@ export default function ConversationScreen() {
             <Text style={styles.logo}>L'Italiano</Text>
           </View>
           <View style={styles.statusPill}>
-            <View style={[styles.statusDot, { backgroundColor: isActive ? "#dcc841" : "#594139" }]} />
+            <View style={[styles.statusDot, { backgroundColor: isTalking ? "#ff6d33" : isConnected ? "#dcc841" : "#594139" }]} />
             <Text style={styles.statusText}>
-              {status === "idle" ? "Pronto" : status === "connecting" ? "Connessione..." : status === "active" ? "Attivo" : status === "paused" ? "In pausa" : "Fine"}
+              {status === "idle" ? "Pronto" : status === "connecting" ? "Connessione..." : isTalking ? "Stai parlando" : status === "active" ? "Ascolta" : "Fine"}
             </Text>
           </View>
         </View>
@@ -196,36 +195,30 @@ export default function ConversationScreen() {
             </View>
             {/* Wave bars pill below avatar */}
             <View style={styles.waveWrap}>
-              <AudioWaveform active={isActive} color="#ff6d33" />
+              <AudioWaveform active={isConnected} color={isTalking ? "#dcc841" : "#ff6d33"} />
             </View>
           </View>
 
           {/* Speech text */}
-          {status === "idle" ? (
-            <View style={styles.idleContent}>
-              <Text style={styles.characterName}>{scenario.characterName}</Text>
-              <Text style={styles.settingText}>{scenario.setting}</Text>
-            </View>
-          ) : lastAiTurn ? (
+          {lastAiTurn && isConnected ? (
             <View style={styles.speechContent}>
-              <Text style={styles.speakerLabel}>{scenario.characterName.toUpperCase()} STA DICENDO...</Text>
+              <Text style={styles.speakerLabel}>{scenario.characterName.toUpperCase()}</Text>
               <Text style={styles.speechItalian}>"{lastAiTurn.italian}"</Text>
-              {lastAiTurn.english && (
-                <Text style={styles.speechEnglish}>{lastAiTurn.english}</Text>
-              )}
             </View>
           ) : (
-            <View style={styles.speechContent}>
+            <View style={styles.idleContent}>
               <Text style={styles.characterName}>{scenario.characterName}</Text>
               <Text style={styles.settingText}>{scenario.setting}</Text>
             </View>
           )}
 
-          {/* Listening status pill */}
-          {isActive && (
-            <View style={styles.listeningPill}>
-              <View style={styles.listeningDot} />
-              <Text style={styles.listeningText}>IN ASCOLTO...</Text>
+          {/* Status pill */}
+          {isConnected && (
+            <View style={[styles.listeningPill, isTalking && styles.talkingPill]}>
+              <View style={[styles.listeningDot, isTalking && { backgroundColor: "#ff6d33" }]} />
+              <Text style={[styles.listeningText, isTalking && { color: "#ff6d33" }]}>
+                {isTalking ? "STAI PARLANDO..." : "TIENI PREMUTO PER PARLARE"}
+              </Text>
             </View>
           )}
         </View>
@@ -252,7 +245,6 @@ export default function ConversationScreen() {
             <View style={styles.controls}>
               <TouchableOpacity
                 onPress={handleSidekick}
-                disabled={status === "ended"}
                 style={styles.sideBtn}
                 activeOpacity={0.7}
               >
@@ -261,11 +253,13 @@ export default function ConversationScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={isActive ? pause : resume}
-                style={styles.micMainBtn}
+                onPressIn={startTalking}
+                onPressOut={stopTalking}
+                disabled={status === "ended"}
+                style={[styles.micMainBtn, isTalking && styles.micMainBtnActive]}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 32 }}>{isActive ? "🎙️" : "⏸️"}</Text>
+                <Text style={{ fontSize: 32 }}>🎙️</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -399,6 +393,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#ff6d33",
     alignItems: "center",
     justifyContent: "center",
+  },
+  micMainBtnActive: {
+    backgroundColor: "#c44a1a",
+    transform: [{ scale: 1.1 }],
+  },
+  talkingPill: {
+    backgroundColor: "rgba(255,109,51,0.1)",
+    borderColor: "rgba(255,109,51,0.3)",
   },
   // Session review
   reviewOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "#131313", zIndex: 100 },

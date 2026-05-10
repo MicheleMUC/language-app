@@ -44,8 +44,7 @@ export interface SidekickMessage {
 export type WsClientMessage =
   | { type: "start"; scenarioId: string; scenario: Scenario }
   | { type: "audio"; data: string } // base64 PCM16
-  | { type: "pause" }
-  | { type: "resume" }
+  | { type: "talk_end" }            // user released mic
   | { type: "end" };
 
 export type WsServerMessage =
@@ -53,6 +52,4 @@ export type WsServerMessage =
   | { type: "audio"; data: string; mimeType?: string } // base64 audio from Gemini
   | { type: "transcript"; role: "user" | "assistant"; text: string; italian: string }
   | { type: "vocab_hint"; item: VocabItem }
-  | { type: "paused" }
-  | { type: "resumed" }
   | { type: "error"; message: string };

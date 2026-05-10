@@ -4,8 +4,7 @@ import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@go
 type ClientMsg =
   | { type: "start"; scenarioId: string; scenario: Record<string, unknown> }
   | { type: "audio"; data: string } // base64 PCM16 @ 16 kHz mono
-  | { type: "pause" }
-  | { type: "resume" }
+  | { type: "talk_end" }            // user released mic → trigger model response
   | { type: "end" };
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
@@ -18,9 +17,8 @@ export function handleConversationWs(ws: WebSocket) {
     : new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
 
   let session: Session | null = null;
-  let paused = false;
-  let txBuffer = ""; // accumulate outputTranscription per turn
-  const audioChunks: Buffer[] = []; // accumulate PCM per turn
+  let txBuffer = "";
+  const audioChunks: Buffer[] = [];
 
   function send(obj: unknown) {
     if (ws.readyState === ws.OPEN) {
@@ -50,27 +48,22 @@ export function handleConversationWs(ws: WebSocket) {
   }
 
   function flushTurn() {
-    // Send WAV audio for the full turn
     if (audioChunks.length > 0) {
       const pcm = Buffer.concat(audioChunks);
       const wav = makePcmWav(pcm);
       send({ type: "audio", data: wav.toString("base64"), mimeType: "audio/wav" });
       audioChunks.length = 0;
     }
-    // Send transcript with Italian + English parsed from the full turn text
     if (txBuffer) {
-      const match = txBuffer.match(/\[English:\s*([\s\S]+?)\]/);
-      const italian = txBuffer.replace(/\[English:[\s\S]+?\]/g, "").trim();
-      const english = match?.[1]?.trim() ?? "";
+      const italian = txBuffer.trim();
       if (italian) {
-        send({ type: "transcript", role: "assistant", italian, text: english });
+        send({ type: "transcript", role: "assistant", italian, text: "" });
       }
       txBuffer = "";
     }
   }
 
   function handleLiveMessage(message: LiveServerMessage) {
-    // Accumulate PCM audio chunks
     const parts = message.serverContent?.modelTurn?.parts ?? [];
     for (const part of parts) {
       if (part.inlineData?.data) {
@@ -78,13 +71,11 @@ export function handleConversationWs(ws: WebSocket) {
       }
     }
 
-    // Accumulate output transcription (includes Italian + [English: ...] annotation)
     const outTx = message.serverContent?.outputTranscription;
     if (outTx && "text" in outTx && typeof outTx.text === "string" && outTx.text) {
       txBuffer += outTx.text;
     }
 
-    // Flush complete turn as WAV + transcript
     if (message.serverContent?.turnComplete) {
       flushTurn();
     }
@@ -104,7 +95,6 @@ export function handleConversationWs(ws: WebSocket) {
         const systemInstruction = `You are ${scenario.characterName}, ${scenario.characterDescription}.
 Setting: ${scenario.setting}.
 Speak ONLY in Italian. Be natural, warm, and patient with the language learner.
-After each of your responses, append an English translation on a new line like: [English: ...]
 Keep sentences short and clear for a ${scenario.difficulty} level learner.
 Start by greeting the user naturally in Italian.`;
 
@@ -128,13 +118,13 @@ Start by greeting the user naturally in Italian.`;
               },
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onclose: (e: any) => {
-                console.log("Live session closed:", e?.code, e?.reason, JSON.stringify(e));
+                console.log("Live session closed:", e?.code, e?.reason);
               },
             },
           });
 
           send({ type: "ready" });
-          // Kick the model to deliver its opening greeting
+          // Bootstrap the opening greeting
           session.sendClientContent({
             turns: [{ role: "user", parts: [{ text: "Ciao!" }] }],
             turnComplete: true,
@@ -147,7 +137,7 @@ Start by greeting the user naturally in Italian.`;
       }
 
       case "audio": {
-        if (paused || !session) return;
+        if (!session) return;
         try {
           session.sendRealtimeInput({
             audio: { data: msg.data, mimeType: "audio/pcm;rate=16000" },
@@ -158,15 +148,16 @@ Start by greeting the user naturally in Italian.`;
         break;
       }
 
-      case "pause":
-        paused = true;
-        send({ type: "paused" });
+      case "talk_end": {
+        if (!session) return;
+        try {
+          // Tell the model the user's turn is complete → triggers model response
+          session.sendClientContent({ turns: [], turnComplete: true });
+        } catch (e) {
+          console.error("talk_end error:", e);
+        }
         break;
-
-      case "resume":
-        paused = false;
-        send({ type: "resumed" });
-        break;
+      }
 
       case "end":
         try {
