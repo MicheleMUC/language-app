@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, SafeAreaView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, collection } from "firebase/firestore";
 import { AudioWaveform } from "@/components/AudioWaveform";

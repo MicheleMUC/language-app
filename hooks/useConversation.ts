@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Audio } from "expo-av";
+import { useAudioPlayer } from "expo-audio";
 import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
 import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/types";
@@ -11,22 +11,16 @@ export function useConversation(scenario: Scenario) {
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const player = useAudioPlayer(null);
 
   const playAudioChunk = useCallback(async (base64: string) => {
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/raw;base64,${base64}` },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-      sound.setOnPlaybackStatusUpdate((s) => {
-        if (s.isLoaded && s.didJustFinish) sound.unloadAsync();
-      });
+      player.replace({ uri: `data:audio/pcm;base64,${base64}` });
+      player.play();
     } catch {
       // audio playback errors are non-fatal
     }
-  }, []);
+  }, [player]);
 
   const handleMessage = useCallback(
     (msg: WsServerMessage) => {

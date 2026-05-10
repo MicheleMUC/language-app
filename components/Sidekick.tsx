@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
+  Modal,
   View,
   Text,
   TextInput,
@@ -8,8 +9,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SidekickMessage } from "@/types";
 
 interface Props {
@@ -20,9 +22,8 @@ interface Props {
 }
 
 export function Sidekick({ messages, loading, onAsk, onClose }: Props) {
-  const sheetRef = useRef<BottomSheet>(null);
   const [question, setQuestion] = useState("");
-  const snapPoints = ["60%", "90%"];
+  const insets = useSafeAreaInsets();
 
   const handleSubmit = () => {
     if (!question.trim() || loading) return;
@@ -31,57 +32,53 @@ export function Sidekick({ messages, loading, onAsk, onClose }: Props) {
   };
 
   return (
-    <BottomSheet
-      ref={sheetRef}
-      snapPoints={snapPoints}
-      onClose={onClose}
-      enablePanDownToClose
-      handleIndicatorStyle={{ backgroundColor: "#7C3AED" }}
-      backgroundStyle={{ backgroundColor: "#F9F5FF" }}
-    >
-      <BottomSheetView className="flex-1">
+    <Modal visible animationType="slide" transparent presentationStyle="overFullScreen" onRequestClose={onClose}>
+      <View style={styles.backdrop}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
+          style={[styles.sheet, { paddingBottom: insets.bottom }]}
         >
-          <View className="flex-row items-center px-4 pb-3 border-b border-purple-100">
-            <View className="flex-1">
-              <Text className="text-lg font-bold text-sidekick">Sidekick</Text>
-              <Text className="text-xs text-purple-400">Ask me anything about the conversation</Text>
+          {/* Handle */}
+          <View style={styles.handleRow}>
+            <View style={styles.handle} />
+          </View>
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Sidekick</Text>
+              <Text style={styles.subtitle}>Ask me anything about the conversation</Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="p-2">
-              <Text className="text-purple-400 text-base">Done</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.doneBtn}>Done</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1 px-4 pt-3" showsVerticalScrollIndicator={false}>
+          {/* Messages */}
+          <ScrollView style={styles.messages} showsVerticalScrollIndicator={false}>
             {messages.length === 0 && (
-              <View className="items-center pt-8">
-                <Text className="text-purple-300 text-sm text-center">
-                  Try asking:{"\n"}"Why did they use 'vorrei' here?"{"\n"}"How do I say 'I prefer the big one'?"
-                </Text>
-              </View>
+              <Text style={styles.hint}>
+                Try asking:{"\n"}"Why did they use 'vorrei' here?"{"\n"}"How do I say 'I prefer the big one'?"
+              </Text>
             )}
             {messages.map((msg, i) => (
-              <View key={i} className="mb-4">
-                <View className="bg-white rounded-xl px-3 py-2 self-end mb-1 border border-purple-100">
-                  <Text className="text-gray-700 text-sm">{msg.question}</Text>
+              <View key={i} style={styles.msgGroup}>
+                <View style={styles.userBubble}>
+                  <Text style={styles.userText}>{msg.question}</Text>
                 </View>
-                <View className="bg-sidekick rounded-xl px-3 py-3 self-start max-w-[90%]">
-                  <Text className="text-white text-sm leading-5">{msg.answer}</Text>
+                <View style={styles.aiBubble}>
+                  <Text style={styles.aiText}>{msg.answer}</Text>
                 </View>
               </View>
             ))}
-            {loading && (
-              <View className="self-start mb-4">
-                <ActivityIndicator color="#7C3AED" />
-              </View>
-            )}
+            {loading && <ActivityIndicator color="#7C3AED" style={{ marginBottom: 12 }} />}
           </ScrollView>
 
-          <View className="flex-row items-end px-4 py-3 border-t border-purple-100 gap-2">
+          {/* Input */}
+          <View style={styles.inputRow}>
             <TextInput
-              className="flex-1 bg-white border border-purple-200 rounded-2xl px-4 py-3 text-sm text-gray-800 max-h-24"
+              style={styles.input}
               placeholder="Ask in English..."
               placeholderTextColor="#C4B5FD"
               multiline
@@ -91,15 +88,36 @@ export function Sidekick({ messages, loading, onAsk, onClose }: Props) {
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={!question.trim() || loading}
-              className={`rounded-full w-10 h-10 items-center justify-center ${
-                question.trim() && !loading ? "bg-sidekick" : "bg-purple-200"
-              }`}
+              style={[styles.sendBtn, (!question.trim() || loading) && styles.sendBtnDisabled]}
             >
-              <Text className="text-white font-bold text-base">↑</Text>
+              <Text style={styles.sendIcon}>↑</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </BottomSheetView>
-    </BottomSheet>
+      </View>
+    </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+  sheet: { backgroundColor: "#F9F5FF", borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "80%" },
+  handleRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#C4B5FD" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#EDE9FE" },
+  title: { fontSize: 18, fontWeight: "700", color: "#7C3AED" },
+  subtitle: { fontSize: 12, color: "#A78BFA" },
+  doneBtn: { color: "#A78BFA", fontSize: 15 },
+  messages: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
+  hint: { color: "#C4B5FD", fontSize: 13, textAlign: "center", paddingTop: 24, lineHeight: 22 },
+  msgGroup: { marginBottom: 16 },
+  userBubble: { alignSelf: "flex-end", backgroundColor: "#fff", borderWidth: 1, borderColor: "#EDE9FE", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4, maxWidth: "85%" },
+  userText: { color: "#4C1D95", fontSize: 13 },
+  aiBubble: { alignSelf: "flex-start", backgroundColor: "#7C3AED", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, maxWidth: "90%" },
+  aiText: { color: "#fff", fontSize: 13, lineHeight: 20 },
+  inputRow: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, borderTopWidth: 1, borderTopColor: "#EDE9FE", gap: 8 },
+  input: { flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#DDD6FE", borderRadius: 20, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, fontSize: 14, color: "#1F2937", maxHeight: 96 },
+  sendBtn: { backgroundColor: "#7C3AED", borderRadius: 20, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  sendBtnDisabled: { backgroundColor: "#DDD6FE" },
+  sendIcon: { color: "#fff", fontSize: 18, fontWeight: "700" },
+});

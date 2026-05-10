@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, SafeAreaView, Alert } from "react-native";
+import { View, Text, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { addDoc, collection } from "firebase/firestore";
 import { IntentForm } from "@/components/IntentForm";

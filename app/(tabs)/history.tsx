@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, SafeAreaView, FlatList, TouchableOpacity } from "react-native";
+import { View, Text, FlatList, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { ConversationSession } from "@/types";
