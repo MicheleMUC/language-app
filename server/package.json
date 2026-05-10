@@ -10,6 +10,7 @@
   "dependencies": {
     "@google-cloud/vertexai": "^1.9.3",
     "@google/genai": "^2.0.1",
+    "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "ws": "^8.18.0"
   },

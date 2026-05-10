@@ -13,9 +13,9 @@ export function useConversation(scenario: Scenario) {
   const socketRef = useRef<ConversationSocket | null>(null);
   const player = useAudioPlayer(null);
 
-  const playAudioChunk = useCallback(async (base64: string) => {
+  const playAudioChunk = useCallback(async (base64: string, mimeType = "audio/wav") => {
     try {
-      player.replace({ uri: `data:audio/pcm;base64,${base64}` });
+      player.replace({ uri: `data:${mimeType};base64,${base64}` });
       player.play();
     } catch {
       // audio playback errors are non-fatal
@@ -29,7 +29,7 @@ export function useConversation(scenario: Scenario) {
           setStatus("active");
           break;
         case "audio":
-          playAudioChunk(msg.data);
+          playAudioChunk(msg.data, msg.mimeType ?? "audio/wav");
           break;
         case "transcript":
           setTurns((prev) => [

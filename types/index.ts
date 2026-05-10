@@ -50,7 +50,7 @@ export type WsClientMessage =
 
 export type WsServerMessage =
   | { type: "ready" }
-  | { type: "audio"; data: string } // base64 PCM16 from Gemini
+  | { type: "audio"; data: string; mimeType?: string } // base64 audio from Gemini
   | { type: "transcript"; role: "user" | "assistant"; text: string; italian: string }
   | { type: "vocab_hint"; item: VocabItem }
   | { type: "paused" }

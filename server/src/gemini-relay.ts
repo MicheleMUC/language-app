@@ -9,13 +9,18 @@ type ClientMsg =
   | { type: "end" };
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
-const LIVE_MODEL = "gemini-2.5-flash-preview-native-audio-dialog";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
+const LIVE_MODEL = "gemini-3.1-flash-live-preview";
 
 export function handleConversationWs(ws: WebSocket) {
-  const ai = new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
+  const ai = GEMINI_API_KEY
+    ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+    : new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
 
   let session: Session | null = null;
   let paused = false;
+  let txBuffer = ""; // accumulate outputTranscription per turn
+  const audioChunks: Buffer[] = []; // accumulate PCM per turn
 
   function send(obj: unknown) {
     if (ws.readyState === ws.OPEN) {
@@ -23,31 +28,65 @@ export function handleConversationWs(ws: WebSocket) {
     }
   }
 
+  function makePcmWav(pcm: Buffer, sampleRate = 24000): Buffer {
+    const numCh = 1, bits = 16;
+    const byteRate = sampleRate * numCh * (bits / 8);
+    const blockAlign = numCh * (bits / 8);
+    const hdr = Buffer.alloc(44);
+    hdr.write("RIFF", 0, "ascii");
+    hdr.writeUInt32LE(36 + pcm.byteLength, 4);
+    hdr.write("WAVE", 8, "ascii");
+    hdr.write("fmt ", 12, "ascii");
+    hdr.writeUInt32LE(16, 16);
+    hdr.writeUInt16LE(1, 20);
+    hdr.writeUInt16LE(numCh, 22);
+    hdr.writeUInt32LE(sampleRate, 24);
+    hdr.writeUInt32LE(byteRate, 28);
+    hdr.writeUInt16LE(blockAlign, 32);
+    hdr.writeUInt16LE(bits, 34);
+    hdr.write("data", 36, "ascii");
+    hdr.writeUInt32LE(pcm.byteLength, 40);
+    return Buffer.concat([hdr, pcm]);
+  }
+
+  function flushTurn() {
+    // Send WAV audio for the full turn
+    if (audioChunks.length > 0) {
+      const pcm = Buffer.concat(audioChunks);
+      const wav = makePcmWav(pcm);
+      send({ type: "audio", data: wav.toString("base64"), mimeType: "audio/wav" });
+      audioChunks.length = 0;
+    }
+    // Send transcript with Italian + English parsed from the full turn text
+    if (txBuffer) {
+      const match = txBuffer.match(/\[English:\s*([\s\S]+?)\]/);
+      const italian = txBuffer.replace(/\[English:[\s\S]+?\]/g, "").trim();
+      const english = match?.[1]?.trim() ?? "";
+      if (italian) {
+        send({ type: "transcript", role: "assistant", italian, text: english });
+      }
+      txBuffer = "";
+    }
+  }
+
   function handleLiveMessage(message: LiveServerMessage) {
+    // Accumulate PCM audio chunks
     const parts = message.serverContent?.modelTurn?.parts ?? [];
     for (const part of parts) {
       if (part.inlineData?.data) {
-        send({ type: "audio", data: part.inlineData.data });
-      }
-      if (part.text) {
-        // The system prompt asks the model to append [English: ...] for translations.
-        const match = part.text.match(/\[English:\s*(.+?)\]/s);
-        const italian = part.text.replace(/\[English:.+?\]/s, "").trim();
-        if (italian) {
-          send({
-            type: "transcript",
-            role: "assistant",
-            italian,
-            text: match?.[1]?.trim() ?? "",
-          });
-        }
+        audioChunks.push(Buffer.from(part.inlineData.data, "base64"));
       }
     }
 
-    // Forward output transcription if the model is transcribing speech
+    // Accumulate output transcription (includes Italian + [English: ...] annotation)
     const outTx = message.serverContent?.outputTranscription;
     if (outTx && "text" in outTx && typeof outTx.text === "string" && outTx.text) {
-      send({ type: "transcript", role: "assistant", italian: outTx.text, text: "" });
+      txBuffer += outTx.text;
+    }
+
+    // Flush complete turn as WAV + transcript
+    if (message.serverContent?.turnComplete) {
+      flushTurn();
     }
   }
 
@@ -74,7 +113,7 @@ Start by greeting the user naturally in Italian.`;
             model: LIVE_MODEL,
             config: {
               systemInstruction,
-              responseModalities: [Modality.AUDIO, Modality.TEXT],
+              responseModalities: [Modality.AUDIO],
               speechConfig: {
                 voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
               },
@@ -84,17 +123,22 @@ Start by greeting the user naturally in Italian.`;
               onmessage: handleLiveMessage,
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onerror: (err: any) => {
-                console.error("Gemini Live error:", err);
+                console.error("Gemini Live error:", JSON.stringify(err));
                 send({ type: "error", message: err?.message ?? "Live API error" });
               },
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onclose: (e: any) => {
-                console.log("Live session closed:", e?.code, e?.reason);
+                console.log("Live session closed:", e?.code, e?.reason, JSON.stringify(e));
               },
             },
           });
 
           send({ type: "ready" });
+          // Kick the model to deliver its opening greeting
+          session.sendClientContent({
+            turns: [{ role: "user", parts: [{ text: "Ciao!" }] }],
+            turnComplete: true,
+          });
         } catch (e) {
           console.error("Failed to start Live session:", e);
           send({ type: "error", message: "Failed to start conversation" });
@@ -129,6 +173,8 @@ Start by greeting the user naturally in Italian.`;
           await session?.close();
         } catch { /* ignore */ }
         session = null;
+        txBuffer = "";
+        audioChunks.length = 0;
         break;
     }
   });
