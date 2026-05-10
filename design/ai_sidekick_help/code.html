@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>L'Italiano - AI Sidekick</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#d6baff",
+                        "on-tertiary": "#373100",
+                        "on-primary": "#5b1a00",
+                        "on-primary-container": "#5f1b00",
+                        "primary-fixed": "#ffdbcf",
+                        "error": "#ffb4ab",
+                        "outline": "#a88a80",
+                        "surface": "#131313",
+                        "on-secondary-fixed-variant": "#53397c",
+                        "surface-bright": "#393939",
+                        "surface-variant": "#353534",
+                        "surface-tint": "#ffb59b",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed-variant": "#504700",
+                        "tertiary-fixed-dim": "#dcc841",
+                        "on-secondary-container": "#c5a8f3",
+                        "primary-container": "#ff6d33",
+                        "secondary-container": "#53397c",
+                        "surface-container-lowest": "#0e0e0e",
+                        "background": "#131313",
+                        "on-error": "#690005",
+                        "inverse-primary": "#a93700",
+                        "tertiary-container": "#bfac26",
+                        "surface-dim": "#131313",
+                        "secondary-fixed-dim": "#d6baff",
+                        "surface-container-highest": "#353534",
+                        "inverse-surface": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#201c00",
+                        "inverse-on-surface": "#313030",
+                        "on-primary-fixed": "#380d00",
+                        "surface-container-low": "#1c1b1b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-container": "#484000",
+                        "on-secondary-fixed": "#26084d",
+                        "on-background": "#e5e2e1",
+                        "tertiary": "#dcc841",
+                        "on-secondary": "#3c2263",
+                        "outline-variant": "#594139",
+                        "on-surface-variant": "#e1bfb4",
+                        "on-surface": "#e5e2e1",
+                        "tertiary-fixed": "#f9e45b",
+                        "primary": "#ffb59b",
+                        "on-primary-fixed-variant": "#812800",
+                        "primary-fixed-dim": "#ffb59b",
+                        "secondary-fixed": "#ecdcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "24px",
+                        "card-gap": "20px",
+                        "gutter": "16px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-mesh-purple {
+            background-color: #d6baff;
+            background-image: radial-gradient(at 0% 0%, #d6baff 0px, transparent 50%),
+                              radial-gradient(at 100% 100%, #53397c 0px, transparent 50%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-container-padding py-4 w-full bg-background docked full-width top-0 z-40">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border-2 border-primary-container overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A premium close-up portrait of a young woman with a friendly expression, styled in a professional but modern aesthetic. She is set against a minimalist deep grey background that matches the app's dark mode theme. The lighting is soft and cinematic, highlighting her features with a warm glow that reflects the vibrant Mediterranean orange and purple accents of the UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-c35RgkZZwMKIBDy2sU8ZeiqFeB0pq1R6ljZhcMvwrpcurt_sj3djaLBlWrXIXWXkIxTB1BAYYSdf8exC_3WXHqqCmzwU35ZVoAAJ2t_EM0HW5uC4lXu86FIFbZs4RAWbJJCeoiMF0ubW66rPwMdbYvd01Y23YgcgDoq25SeWnVRVlDjHob_p99M7QvERWZnNHaiC_Ms_zK6KhDp6b1c8y4L3KV79wUV6lMJddjh-SNwCf-hU9jyIPS3C7B8Q8xtLMhhUUWtS1do"/>
+</div>
+<h1 class="font-display-lg text-headline-lg text-primary dark:text-primary tracking-tighter">L'Italiano</h1>
+</div>
+<button class="text-primary hover:opacity-80 scale-95 duration-200">
+<span class="material-symbols-outlined text-2xl">notifications</span>
+</button>
+</header>
+<main class="px-container-padding pb-32">
+<!-- Background Content (Simulated Conversation Context) -->
+<div class="space-y-6 opacity-40 select-none pointer-events-none">
+<div class="flex justify-start">
+<div class="bg-surface-container p-4 rounded-tr-lg rounded-bl-lg rounded-br-lg max-w-[80%]">
+<p class="font-body-md">Vuoi un caffè?</p>
+</div>
+</div>
+<div class="flex justify-end">
+<div class="bg-primary-container text-on-primary-container p-4 rounded-tl-lg rounded-bl-lg rounded-br-lg max-w-[80%]">
+<p class="font-body-md">Sì, per favore. Solo un po'.</p>
+</div>
+</div>
+</div>
+<!-- AI Sidekick Overlay Container -->
+<div class="fixed inset-0 z-50 flex items-center justify-center px-container-padding bg-background/60 backdrop-blur-sm">
+<div class="w-full max-w-md bg-secondary-container rounded-lg shadow-2xl relative overflow-hidden border border-secondary/20">
+<!-- Character Illustration Top -->
+<div class="absolute -top-4 -right-4 opacity-20">
+<span class="material-symbols-outlined text-9xl text-secondary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="p-8 relative z-10">
+<!-- Label & Icon -->
+<div class="flex items-center gap-2 mb-4">
+<div class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-label-sm text-label-sm tracking-wider">
+                            PRO TIP
+                        </div>
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+</div>
+<!-- Title -->
+<h2 class="font-headline-lg text-headline-lg text-on-secondary-container mb-2">AI Sidekick</h2>
+<!-- Explanation Card -->
+<div class="bg-surface-container-high/80 rounded-lg p-6 mb-8 border-l-4 border-tertiary">
+<p class="font-body-md text-on-surface mb-4">
+                            You used <span class="text-tertiary font-bold">"Un po'"</span> perfectly! 
+                        </p>
+<p class="font-body-md text-on-surface-variant leading-relaxed">
+                            In Italian, <span class="italic">"un po'"</span> is short for <span class="italic">"un poco"</span>. It's the most natural way to say "a little bit" or "some" in casual conversation.
+                        </p>
+<div class="mt-4 flex items-center gap-2 text-label-sm font-label-sm text-secondary">
+<span class="material-symbols-outlined text-sm">info</span>
+                            Always use the apostrophe!
+                        </div>
+</div>
+<!-- Character/Mascot Image Area -->
+<div class="flex justify-center mb-8">
+<div class="w-40 h-40 bg-mesh-purple rounded-full flex items-center justify-center p-4">
+<img alt="AI Mascot" class="w-full h-full object-contain mix-blend-multiply opacity-90" data-alt="A playful, high-contrast character illustration of a friendly blob-like alien teacher with large curious eyes and expressive hands. The style is modern-pop with bold black outlines and a squishy, friendly shape. The character is set against a vibrant purple and orange gradient background, embodying the energetic and approachable brand identity of the language learning app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4swtBuGxAThCzT0vjwRfFoLJm-C2wEUwb1uFDqW7Sx0nM--MXvHNSKdSlvE9FenJy8Xqh1raJEkw8cOLlOqOEGPedf4wFH-u4BCbfCc7UQOSf8OIDmvcHzwSak4x-HkugcncWqKEzmfPtMqeErp53HyRJtNTHcWx3hQpx1P60zGbTkfATOkMWTiRFp3zAdDSZPTVBI7OdYf7bCmOkHC8NAcjagrj__YFnf7Szxc1g2zWuH0ENWvemOhynGgL6h05YQqhaDYZBN2o"/>
+</div>
+</div>
+<!-- Primary Action Button -->
+<button class="w-full bg-primary-container text-on-primary-container font-headline-lg text-headline-lg-mobile py-5 rounded-full hover:scale-95 duration-200 flex items-center justify-center gap-3 active:scale-90">
+                        Capito!
+                        <span class="material-symbols-outlined">check_circle</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-8 left-0 right-0 z-50 flex justify-center gap-card-gap mx-auto">
+<div class="bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-md shadow-lg fixed bottom-8 left-1/2 -translate-x-1/2 w-auto rounded-full px-6 py-3 flex gap-4">
+<button class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+</button>
+<button class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+</button>
+<button class="bg-primary-container text-on-primary-container rounded-full p-3 scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+<button class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+</button>
+</div>
+</nav>
+</body></html>

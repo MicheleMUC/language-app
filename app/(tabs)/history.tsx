@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { FloatingNav } from "@/components/FloatingNav";
-import { db } from "@/lib/firebase";
+import { loadSessions } from "@/lib/supabase";
 import type { ConversationSession } from "@/types";
 
 export default function HistoryScreen() {
@@ -13,11 +12,10 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     const load = async () => {
-      if (!db) { setLoading(false); return; }
       try {
-        const q = query(collection(db, "sessions"), orderBy("startedAt", "desc"), limit(20));
-        const snap = await getDocs(q);
-        setSessions(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ConversationSession)));
+        setSessions(await loadSessions("anonymous"));
+      } catch {
+        // non-fatal — show empty state
       } finally {
         setLoading(false);
       }

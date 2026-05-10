@@ -10,13 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { addDoc, collection } from "firebase/firestore";
 import { AudioWaveform } from "@/components/AudioWaveform";
 import { VocabHint } from "@/components/VocabHint";
 import { Sidekick } from "@/components/Sidekick";
 import { useConversation } from "@/hooks/useConversation";
 import { useSidekick } from "@/hooks/useSidekick";
-import { db } from "@/lib/firebase";
+import { saveSession } from "@/lib/supabase";
 import type { Scenario, ConversationTurn } from "@/types";
 
 function PulseRings() {
@@ -148,16 +147,14 @@ export default function ConversationScreen() {
 
   const handleEnd = useCallback(async () => {
     await end();
-    if (db) {
-      await addDoc(collection(db, "sessions"), {
-        scenarioId: id,
-        userId: "anonymous",
-        turns,
-        startedAt: turns[0]?.timestamp ?? Date.now(),
-        endedAt: Date.now(),
-        newVocabulary: [],
-      });
-    }
+    await saveSession({
+      scenarioId: id,
+      userId: "anonymous",
+      turns,
+      startedAt: turns[0]?.timestamp ?? Date.now(),
+      endedAt: Date.now(),
+      newVocabulary: [],
+    }).catch(() => {/* non-fatal */});
   }, [end, id, turns]);
 
   const handleHome = useCallback(() => {

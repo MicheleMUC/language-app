@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>L'Italiano - Session Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#d6baff",
+                        "on-tertiary": "#373100",
+                        "on-primary": "#5b1a00",
+                        "on-primary-container": "#5f1b00",
+                        "primary-fixed": "#ffdbcf",
+                        "error": "#ffb4ab",
+                        "outline": "#a88a80",
+                        "surface": "#131313",
+                        "on-secondary-fixed-variant": "#53397c",
+                        "surface-bright": "#393939",
+                        "surface-variant": "#353534",
+                        "surface-tint": "#ffb59b",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed-variant": "#504700",
+                        "tertiary-fixed-dim": "#dcc841",
+                        "on-secondary-container": "#c5a8f3",
+                        "primary-container": "#ff6d33",
+                        "secondary-container": "#53397c",
+                        "surface-container-lowest": "#0e0e0e",
+                        "background": "#131313",
+                        "on-error": "#690005",
+                        "inverse-primary": "#a93700",
+                        "tertiary-container": "#bfac26",
+                        "surface-dim": "#131313",
+                        "secondary-fixed-dim": "#d6baff",
+                        "surface-container-highest": "#353534",
+                        "inverse-surface": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#201c00",
+                        "inverse-on-surface": "#313030",
+                        "on-primary-fixed": "#380d00",
+                        "surface-container-low": "#1c1b1b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-container": "#484000",
+                        "on-secondary-fixed": "#26084d",
+                        "on-background": "#e5e2e1",
+                        "tertiary": "#dcc841",
+                        "on-secondary": "#3c2263",
+                        "outline-variant": "#594139",
+                        "on-surface-variant": "#e1bfb4",
+                        "on-surface": "#e5e2e1",
+                        "tertiary-fixed": "#f9e45b",
+                        "primary": "#ffb59b",
+                        "on-primary-fixed-variant": "#812800",
+                        "primary-fixed-dim": "#ffb59b",
+                        "secondary-fixed": "#ecdcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "24px",
+                        "card-gap": "20px",
+                        "gutter": "16px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #131313;
+            color: #e5e2e1;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="custom-scroll">
+<!-- Top AppBar Component -->
+<header class="bg-background dark:bg-background flex justify-between items-center px-container-padding py-4 w-full docked full-width top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqL9YI5sdGUV6clbezX5dY9H-igujytyU6ATr7Roy0BwHa1dQis2fTn3ErHLzHyErkicmx5GCau_BoqoUXlY5S6TuKAws5dzEwvCKUmhaa67d2aE-yqvrrDeOHjwPkX0Jn8CfdH4kNg1ajgCG7lyOWTd2wHkmbmveJFV1_PW2xd3XEJcH0-4iTx3kJXDF5Zp6Kvz-vXSVSPzjfzbIwUtD7dUPiDxsCuCX7QViklPdXGhYl8Ozw63k47-YcVU_-WsEfPo31IxG9aQk"/>
+</div>
+<h1 class="font-display-lg text-headline-lg text-primary dark:text-primary leading-none">L'Italiano</h1>
+</div>
+<button class="text-primary hover:opacity-80 scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="px-container-padding pb-32 pt-4 space-y-8">
+<!-- Hero Celebration Section -->
+<section class="space-y-4">
+<div class="bg-secondary-container rounded-lg p-8 relative overflow-hidden flex flex-col items-center text-center">
+<div class="absolute -top-10 -right-10 w-40 h-40 bg-secondary/20 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-10 -left-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl"></div>
+<div class="relative z-10 space-y-2">
+<h2 class="font-display-lg text-headline-lg text-on-secondary-container">Ottimo lavoro!</h2>
+<p class="font-body-md text-on-secondary-container/80 max-w-[280px]">Hai completato la lezione con successo. Continua così!</p>
+</div>
+<div class="mt-6 w-32 h-32 relative">
+<img class="w-full h-full object-contain drop-shadow-xl" data-alt="A stylized, playful character-driven illustration of an Italian flag heart symbol. The style is modern-pop with thick black outlines and vibrant flat colors, matching a premium educational app aesthetic. Soft, professional lighting against a Mediterranean-inspired backdrop." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpn1zwuPo3edsnmxQMtJ8VJWH01HP27GDNDy3gqSpsrC-5SjtANIcOgjSLFwF7AyWwzvVuBD7I8K7mX7n9a3Ban2lr3E9eOUXDOcA8x9CoMli-GYls2VfJx_BYgfhDrT34noRwOhZCM5CANxYM2GfT20qzUNhEKAieWIjlv_ID_N6y1oSFkvOLuxYe_Dgx8MPaoRZXvus0qGhnTW6QMgtZNU2bGrmGmGXPYc35TCzBwR-5unhYeBzO19ngs0kf8TfD9ItJsEcmcpo"/>
+</div>
+</div>
+</section>
+<!-- Bento Grid Stats -->
+<section class="bento-grid">
+<!-- Fluency Card -->
+<div class="bg-primary-container rounded-lg p-6 flex flex-col justify-between aspect-square">
+<div>
+<span class="material-symbols-outlined text-on-primary-fixed text-3xl" data-icon="auto_awesome">auto_awesome</span>
+<h3 class="font-headline-lg text-on-primary-fixed mt-2">Fluidità</h3>
+</div>
+<div>
+<p class="font-display-lg text-5xl text-on-primary-fixed">85%</p>
+<div class="w-full bg-on-primary/20 h-2 rounded-full mt-2">
+<div class="bg-on-primary-fixed w-[85%] h-full rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- New Terms Card -->
+<div class="bg-tertiary rounded-lg p-6 flex flex-col justify-between aspect-square">
+<div>
+<span class="material-symbols-outlined text-on-tertiary text-3xl" data-icon="menu_book">menu_book</span>
+<h3 class="font-headline-lg text-on-tertiary mt-2">Termini</h3>
+</div>
+<div>
+<p class="font-display-lg text-5xl text-on-tertiary">+12</p>
+<p class="font-label-sm text-on-tertiary/70 uppercase tracking-widest">Nuovi Acquisiti</p>
+</div>
+</div>
+</section>
+<!-- Vocabulary List -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h3 class="font-headline-lg text-headline-lg-mobile text-on-background">Vocabolario Acquisito</h3>
+<span class="font-label-sm text-primary">Vedi tutti</span>
+</div>
+<div class="space-y-3">
+<!-- Vocab Item 1 -->
+<div class="bg-surface-container rounded-lg p-4 flex items-center justify-between border border-outline-variant/30">
+<div class="flex gap-4 items-center">
+<div class="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="translate">translate</span>
+</div>
+<div>
+<p class="font-headline-lg text-body-md text-on-surface">Passeggiata</p>
+<p class="font-body-md text-on-surface-variant text-sm">A short walk / Stroll</p>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="volume_up" style="font-variation-settings: 'FILL' 1;">volume_up</span>
+</button>
+</div>
+<!-- Vocab Item 2 -->
+<div class="bg-surface-container rounded-lg p-4 flex items-center justify-between border border-outline-variant/30">
+<div class="flex gap-4 items-center">
+<div class="w-12 h-12 bg-tertiary/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary" data-icon="restaurant">restaurant</span>
+</div>
+<div>
+<p class="font-headline-lg text-body-md text-on-surface">Squisito</p>
+<p class="font-body-md text-on-surface-variant text-sm">Exquisite / Delicious</p>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="volume_up" style="font-variation-settings: 'FILL' 1;">volume_up</span>
+</button>
+</div>
+<!-- Vocab Item 3 -->
+<div class="bg-surface-container rounded-lg p-4 flex items-center justify-between border border-outline-variant/30">
+<div class="flex gap-4 items-center">
+<div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="mood">mood</span>
+</div>
+<div>
+<p class="font-headline-lg text-body-md text-on-surface">Entusiasta</p>
+<p class="font-body-md text-on-surface-variant text-sm">Enthusiastic</p>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="volume_up" style="font-variation-settings: 'FILL' 1;">volume_up</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Action Buttons -->
+<section class="grid grid-cols-1 gap-4 pt-4">
+<button class="bg-primary-container text-on-primary-fixed py-5 rounded-full font-headline-lg text-body-md flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-primary-container/20">
+<span class="material-symbols-outlined" data-icon="replay">replay</span>
+                Ripeti Scenario
+            </button>
+<button class="bg-surface-container-highest text-on-surface py-5 rounded-full font-headline-lg text-body-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-outline-variant/50">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+                Torna alla Home
+            </button>
+</section>
+</main>
+<!-- Bottom Navigation Component -->
+<nav class="fixed bottom-8 left-0 right-0 z-50 flex justify-center gap-card-gap mx-auto">
+<div class="bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-md shadow-lg w-auto rounded-full px-6 py-2 flex items-center gap-4">
+<a class="bg-primary-container text-on-primary-container rounded-full p-3 scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+</a>
+<a class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+</a>
+<a class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</a>
+</div>
+</nav>
+</body></html>

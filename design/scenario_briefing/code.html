@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>L'Italiano - Al Mercato</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "surface-container-high": "#2a2a2a",
+                  "secondary": "#d6baff",
+                  "on-tertiary": "#373100",
+                  "on-primary": "#5b1a00",
+                  "on-primary-container": "#5f1b00",
+                  "primary-fixed": "#ffdbcf",
+                  "error": "#ffb4ab",
+                  "outline": "#a88a80",
+                  "surface": "#131313",
+                  "on-secondary-fixed-variant": "#53397c",
+                  "surface-bright": "#393939",
+                  "surface-variant": "#353534",
+                  "surface-tint": "#ffb59b",
+                  "surface-container": "#201f1f",
+                  "on-tertiary-fixed-variant": "#504700",
+                  "tertiary-fixed-dim": "#dcc841",
+                  "on-secondary-container": "#c5a8f3",
+                  "primary-container": "#ff6d33",
+                  "secondary-container": "#53397c",
+                  "surface-container-lowest": "#0e0e0e",
+                  "background": "#131313",
+                  "on-error": "#690005",
+                  "inverse-primary": "#a93700",
+                  "tertiary-container": "#bfac26",
+                  "surface-dim": "#131313",
+                  "secondary-fixed-dim": "#d6baff",
+                  "surface-container-highest": "#353534",
+                  "inverse-surface": "#e5e2e1",
+                  "error-container": "#93000a",
+                  "on-tertiary-fixed": "#201c00",
+                  "inverse-on-surface": "#313030",
+                  "on-primary-fixed": "#380d00",
+                  "surface-container-low": "#1c1b1b",
+                  "on-error-container": "#ffdad6",
+                  "on-tertiary-container": "#484000",
+                  "on-secondary-fixed": "#26084d",
+                  "on-background": "#e5e2e1",
+                  "tertiary": "#dcc841",
+                  "on-secondary": "#3c2263",
+                  "outline-variant": "#594139",
+                  "on-surface-variant": "#e1bfb4",
+                  "on-surface": "#e5e2e1",
+                  "tertiary-fixed": "#f9e45b",
+                  "primary": "#ffb59b",
+                  "on-primary-fixed-variant": "#812800",
+                  "primary-fixed-dim": "#ffb59b",
+                  "secondary-fixed": "#ecdcff"
+          },
+          "borderRadius": {
+                  "DEFAULT": "1rem",
+                  "lg": "2rem",
+                  "xl": "3rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "container-padding": "24px",
+                  "card-gap": "20px",
+                  "gutter": "16px",
+                  "base": "8px"
+          },
+          "fontFamily": {
+                  "headline-lg-mobile": ["Plus Jakarta Sans"],
+                  "display-lg": ["Plus Jakarta Sans"],
+                  "label-sm": ["Plus Jakarta Sans"],
+                  "body-md": ["Plus Jakarta Sans"],
+                  "headline-lg": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+                  "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                  "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                  "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                  "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                  "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    body {
+      background-color: #131313;
+      color: #e5e2e1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md antialiased">
+<header class="bg-background dark:bg-background flex justify-between items-center px-container-padding py-4 w-full docked full-width top-0 z-40 fixed">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcFIYnk1r_xSZzMYzKyPReXp1oFuEiys7JWw9n1Mik_5J7gUsx4ywUm5VodhT5hvWmE6Ls57hQVFrn-s0mIwm3B8tZusZPQahXeZ4bSwOPMO1TZomDGkbtNmwE1baQbzt8dtlya_IEeGBVDYHp4g6jhTYcgEXeUoT67ijZ9EKjNWxooD0UeePm7qnBl2LYafpl3UgfWPqic3MvDaRvtNeW0vrQrt1RYX1OH-KQ4JDJbB2dTPtn1yKGmk0iaBAdo4EpfGy0EvawQ1I"/>
+</div>
+<h1 class="font-display-lg text-headline-lg text-primary dark:text-primary leading-none">L'Italiano</h1>
+</div>
+<button class="text-on-surface-variant hover:opacity-80 scale-95 duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="pt-24 pb-32 px-container-padding max-w-md mx-auto">
+<div class="relative w-full aspect-[4/3] rounded-lg overflow-hidden mb-8 shadow-2xl">
+<img class="w-full h-full object-cover" data-alt="A vibrant, cinematic wide-angle photograph of a bustling traditional Italian street market in the early morning. Warm sunlight filters through canvas awnings, illuminating wooden crates overflowing with ripe tomatoes, lush basil, and purple eggplants. The setting is rich with textures of ancient cobblestones and weathered stone buildings, creating a high-contrast, premium lifestyle aesthetic with deep shadows and electric orange highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2w06AeAO8Ra61Ne7B_0VAtBrX3npsNKzRsPCLz6USOIFt2dDVpouIOM1ID89nrQw9Sb3T5_x5CO-09XGxunG6DqdoMD62qjFaOKcUXn0SI5S6XYE7GySr_iaiibNf3AvlqhFtg_uWudaM5xC0g42jBYGKSGcYSHUxtm60F3HgpCZ5Xip-aMyLrVvkhirs5EZzwnpOFz4SEhzQZaxbZltHx4ktf17R-bCes8YzLAtAS6A4uIvzeRTZkSeS8UFTXx4iypEtnd_9FpA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4">
+<span class="bg-tertiary-container text-on-tertiary text-label-sm font-label-sm px-3 py-1 rounded-full mb-2 inline-block">LIVELLO A2</span>
+<h2 class="font-headline-lg text-headline-lg-mobile text-on-surface">Al Mercato</h2>
+</div>
+</div>
+<section class="mb-8">
+<p class="text-on-surface-variant font-body-md leading-relaxed mb-6">
+        Immergiti nell'atmosfera vibrante di un mercato rionale italiano. Dovrai interagire con i venditori locali per fare la spesa della settimana.
+      </p>
+<div class="bg-primary-container p-6 rounded-lg mb-6 flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-primary-container text-4xl" data-icon="shopping_basket">shopping_basket</span>
+<h3 class="font-headline-lg text-headline-lg-mobile text-on-primary-container">Il Tuo Obiettivo</h3>
+</div>
+<p class="text-on-primary-container font-body-md opacity-90">
+          Compra un chilo di pomodori e chiedi informazioni sulla freschezza del formaggio pecorino. Non dimenticare di negoziare un po' sul prezzo!
+        </p>
+</div>
+</section>
+<section class="mb-8">
+<h4 class="text-on-surface font-label-sm uppercase tracking-widest mb-4">Incontra i personaggi</h4>
+<div class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+<div class="flex-shrink-0 w-64 bg-surface-container rounded-lg p-4 border border-outline-variant/30">
+<div class="flex items-center gap-4 mb-3">
+<div class="w-16 h-16 rounded-full bg-tertiary/20 flex items-center justify-center p-1">
+<img alt="Character" class="w-full h-full rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgTNvNPYUFI4fOlllq6gCOJ4XtiIywWj-Se7sNpALB6d7p3UkwGcA7kkrOXaJru2LIw2nihnLo-zFvGQiLOe6hPaLmXFz-Iy7LJ2B7TQzTpVB8CmqEwOYYzA8kiQy7uHn1vpnxBk4wcH6entEDkKb_peZRT83ZG2SGsdYiRXnMxHBCZb3AsGF70AHT1W6EX6q-3M4rRipRnQFYHSri8mCVYXqXTy7V0nVR2MdgipzF45DwiCPWx7xXH4MedbjsQwHqJGlWj0Te3hE"/>
+</div>
+<div>
+<p class="text-on-surface font-headline-lg text-body-md">Marco</p>
+<p class="text-on-surface-variant text-label-sm">Il Fruttivendolo</p>
+</div>
+</div>
+<p class="text-on-surface-variant text-label-sm italic italic">"I miei pomodori sono i più dolci di tutta la città, provare per credere!"</p>
+</div>
+<div class="flex-shrink-0 w-64 bg-surface-container rounded-lg p-4 border border-outline-variant/30">
+<div class="flex items-center gap-4 mb-3">
+<div class="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center p-1">
+<img alt="Character" class="w-full h-full rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkk1G7O3LP7IDO2fNm3PM_JaCwYq1-qEJEPna_z0rWndjAhyGS071KCDjXielXpcwSjMNPRWll4nu0DPKA_I_6NiAEa9dZHFjN1BO7zxjX3o3kHNReuHQHYZ3mjDvu2lh7Y0OwhEn0IhSu6Oc0I15Z4FzUHTggdYTptOUkjGzNQK4s0DmBW2Vy1G5AuUvWcY1GasGz2_ygQn3y4F2pRz2itBZ4Z-8XkiLQFtaAchN9_HLfTzirjMZdlqCNoPSVc1UifjtF83opmpc"/>
+</div>
+<div>
+<p class="text-on-surface font-headline-lg text-body-md">Lucia</p>
+<p class="text-on-surface-variant text-label-sm">La Formaggiaia</p>
+</div>
+</div>
+<p class="text-on-surface-variant text-label-sm italic">"Questo pecorino è arrivato stamattina direttamente dalla Sardegna."</p>
+</div>
+</div>
+</section>
+<div class="flex flex-col gap-card-gap mt-8">
+<button class="bg-primary-container text-on-primary-container font-headline-lg text-body-md py-5 rounded-full flex items-center justify-center gap-3 w-full shadow-lg hover:opacity-90 active:scale-95 transition-all">
+        Inizia Conversazione
+        <span class="material-symbols-outlined" data-icon="play_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+</button>
+<button class="bg-surface-container-high text-on-surface font-headline-lg text-body-md py-5 rounded-full flex items-center justify-center gap-3 w-full border border-outline-variant hover:bg-surface-variant active:scale-95 transition-all">
+        Cambia Scenario
+        <span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</div>
+</main>
+<nav class="fixed bottom-8 left-0 right-0 z-50 flex justify-center gap-card-gap mx-auto">
+<div class="bg-surface-container/80 backdrop-blur-md shadow-lg fixed bottom-8 left-1/2 -translate-x-1/2 w-auto rounded-full px-6 py-3 flex justify-center gap-4">
+<button class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+</button>
+<button class="bg-primary-container text-on-primary-container rounded-full p-3 scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="school" data-weight="fill" style="font-variation-settings: 'FILL' 1;">school</span>
+</button>
+<button class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+</button>
+<button class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</nav>
+</body></html>

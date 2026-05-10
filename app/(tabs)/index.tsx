@@ -11,11 +11,10 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { addDoc, collection } from "firebase/firestore";
 import { ScenarioCard } from "@/components/ScenarioCard";
 import { FloatingNav } from "@/components/FloatingNav";
 import { generateScenario } from "@/lib/api";
-import { db } from "@/lib/firebase";
+import { saveScenario } from "@/lib/supabase";
 import type { Scenario } from "@/types";
 
 const SUGGESTED = [
@@ -56,11 +55,7 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const generated = await generateScenario(trimmed, "anonymous");
-      let id = `local_${Date.now()}`;
-      if (db) {
-        const docRef = await addDoc(collection(db, "scenarios"), generated);
-        id = docRef.id;
-      }
+      const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {
       Alert.alert("Errore", "Could not generate scenario. Is the server running?");

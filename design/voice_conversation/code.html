@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>L'Italiano - Real-time Voice</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;family=Playfair+Display:ital,wght@0,700;1,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #131313;
+        }
+        .serif-text {
+            font-family: 'Playfair Display', serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .voice-wave {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 40px;
+        }
+        .wave-bar {
+            width: 4px;
+            background: #ff6d33;
+            border-radius: 2px;
+            animation: wave-anim 1s ease-in-out infinite alternate;
+        }
+        @keyframes wave-anim {
+            from { height: 8px; }
+            to { height: 32px; }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#d6baff",
+                        "on-tertiary": "#373100",
+                        "on-primary": "#5b1a00",
+                        "on-primary-container": "#5f1b00",
+                        "primary-fixed": "#ffdbcf",
+                        "error": "#ffb4ab",
+                        "outline": "#a88a80",
+                        "surface": "#131313",
+                        "on-secondary-fixed-variant": "#53397c",
+                        "surface-bright": "#393939",
+                        "surface-variant": "#353534",
+                        "surface-tint": "#ffb59b",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed-variant": "#504700",
+                        "tertiary-fixed-dim": "#dcc841",
+                        "on-secondary-container": "#c5a8f3",
+                        "primary-container": "#ff6d33",
+                        "secondary-container": "#53397c",
+                        "surface-container-lowest": "#0e0e0e",
+                        "background": "#131313",
+                        "on-error": "#690005",
+                        "inverse-primary": "#a93700",
+                        "tertiary-container": "#bfac26",
+                        "surface-dim": "#131313",
+                        "secondary-fixed-dim": "#d6baff",
+                        "surface-container-highest": "#353534",
+                        "inverse-surface": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#201c00",
+                        "inverse-on-surface": "#313030",
+                        "on-primary-fixed": "#380d00",
+                        "surface-container-low": "#1c1b1b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-container": "#484000",
+                        "on-secondary-fixed": "#26084d",
+                        "on-background": "#e5e2e1",
+                        "tertiary": "#dcc841",
+                        "on-secondary": "#3c2263",
+                        "outline-variant": "#594139",
+                        "on-surface-variant": "#e1bfb4",
+                        "on-surface": "#e5e2e1",
+                        "tertiary-fixed": "#f9e45b",
+                        "primary": "#ffb59b",
+                        "on-primary-fixed-variant": "#812800",
+                        "primary-fixed-dim": "#ffb59b",
+                        "secondary-fixed": "#ecdcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "24px",
+                        "card-gap": "20px",
+                        "gutter": "16px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface selection:bg-primary-container overflow-hidden h-screen flex flex-col">
+<!-- Header Section (Derived from TopAppBar Shared Component logic) -->
+<header class="flex justify-between items-center px-container-padding py-6 w-full z-10">
+<div class="flex items-center gap-3 group cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeyUe6RjZz3G51PBwu6Lxh-0YyQgrLCm0gR5cqu58nNRLbIf1gPJs6MXBsxbNLw_ycg6TwKhS_6DTkmoj9wOn34mtyhjMrLuO8HK4x2PYwqxb6kWgXwu5iZ-Qhhpl159ffQJMD0MPfzBnDAi30W1MA-uv7RmKrBJd6_AEUhCLSTVCSJnqXjkcZOmZ766yVHtzAtm66J4KlgYpe2eKc-l4se4dLBex-hZokxqY0Cv249xelaiSJZExutReeuyh5RAgfDgva_N2LbGM"/>
+</div>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary">L'Italiano</span>
+</div>
+<button class="w-12 h-12 rounded-full flex items-center justify-center bg-surface-container-high text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center px-container-padding relative">
+<!-- Background Grain/Texture (Subtle UI depth) -->
+<div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAC7qDMTCL3RuDKTdMm8Q7MHhaHo94wScVS-e9hLldqMUNlA9qitiaszfr0V3siUOo7IEMYJlhXWZ4tBFaIYqemXcBLlJI-0u-sKR-O-5SfSA4T8XL8_20lrDn8Pkaj7OHaAf7H6YABYQRho60c_a508aHryPanDUXz3Tge9MG20WxtfYl2URVxEwLrtg17x5GKDWnp9zkfz4xGRVQyU0WWw85rIeOG2EXj8656EhJXdQYCRvECxBIVo8SskXR8G3jZ6hf50UzhImE');"></div>
+<!-- Character Avatar with Pulse -->
+<div class="relative mb-12">
+<div class="absolute inset-0 rounded-full bg-primary-container/20 pulse-ring"></div>
+<div class="absolute inset-0 rounded-full bg-primary-container/10 pulse-ring" style="animation-delay: 0.5s;"></div>
+<div class="relative w-48 h-48 md:w-64 md:h-64 rounded-full border-4 border-primary-container/30 p-2 bg-surface-container-lowest shadow-2xl overflow-hidden">
+<img class="w-full h-full object-cover rounded-full" data-alt="A charming and expressive character illustration of Marco, an Italian language guide, rendered in a modern pop-art style. He has stylized features, large curious eyes, and is set against a vibrant terracotta orange background that pops from the dark UI. The lighting is soft and studio-like, highlighting the smooth shapes and playful energy of the character as he appears to be listening intently." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAg41xtK_4QCt6gAsRzA0AMsCFggmHtbH7MIp16BKoXKKqzWbJZsDNl3swtA26TQYANAxJbYHDJVUbHOqBTd9H4UiAiUOQuOZiExu-DnAR6DjO3n4EmA6gB1-b-kw9uSkhEVxZGIWyLe61ZYhQEGxusG2qXHyVoajL4jgtaJ2RSlMtVFhMeVYJquy50uEKxzsi1ODvRpzLfGSOnssGqidl_z3CCR3u4vMnjMbIefFGpMDvkfndJiNLH3-IypyCHT6EOUC4dvAQxtcI"/>
+</div>
+<!-- Voice Wave Visualization Overlay -->
+<div class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-surface-container-high/90 backdrop-blur-md px-6 py-2 rounded-full flex items-center gap-2 border border-outline-variant">
+<div class="voice-wave">
+<div class="wave-bar" style="animation-delay: 0.1s; height: 12px;"></div>
+<div class="wave-bar" style="animation-delay: 0.3s; height: 24px;"></div>
+<div class="wave-bar" style="animation-delay: 0.5s; height: 18px;"></div>
+<div class="wave-bar" style="animation-delay: 0.2s; height: 30px;"></div>
+<div class="wave-bar" style="animation-delay: 0.4s; height: 14px;"></div>
+</div>
+</div>
+</div>
+<!-- Speech Text Container -->
+<div class="text-center max-w-lg mb-16 space-y-6">
+<div class="space-y-2">
+<p class="text-primary font-label-sm text-label-sm tracking-widest uppercase">MARCO STA DICENDO...</p>
+<h2 class="serif-text text-4xl md:text-5xl lg:text-6xl text-on-surface leading-tight italic">
+                    "Come va la tua giornata oggi?"
+                </h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-70">
+                How is your day going today?
+            </p>
+</div>
+<!-- Status Pill -->
+<div class="mb-8 flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-container/10 border border-primary-container/20">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-[0.2em]">In Ascolto...</span>
+</div>
+</main>
+<!-- Contextual Control Bar (Modified Shell) -->
+<div class="pb-12 px-container-padding">
+<div class="max-w-md mx-auto bg-surface-container/60 backdrop-blur-xl rounded-full p-3 flex items-center justify-between border border-outline-variant shadow-2xl">
+<!-- Help Button -->
+<button class="flex flex-col items-center justify-center w-16 h-16 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">lightbulb</span>
+<span class="font-label-sm text-[10px] mt-1">Aiuto</span>
+</button>
+<!-- Primary Mic Toggle -->
+<button class="w-20 h-20 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-lg active:scale-90 transition-all duration-150 hover:brightness-110">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">mic</span>
+</button>
+<!-- Close Button -->
+<button class="flex flex-col items-center justify-center w-16 h-16 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">close</span>
+<span class="font-label-sm text-[10px] mt-1">Chiudi</span>
+</button>
+</div>
+</div>
+<!-- Hidden Bottom Nav Suppressed for Transactional Intent but keeping layout structure -->
+<!-- Logic: Suppressed because the user is in a focused Task-Focused session (Voice Call) -->
+</body></html>

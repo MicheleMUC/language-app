@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="it"><head><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#2a2a2a",
+                    "secondary": "#d6baff",
+                    "on-tertiary": "#373100",
+                    "on-primary": "#5b1a00",
+                    "on-primary-container": "#5f1b00",
+                    "primary-fixed": "#ffdbcf",
+                    "error": "#ffb4ab",
+                    "outline": "#a88a80",
+                    "surface": "#131313",
+                    "on-secondary-fixed-variant": "#53397c",
+                    "surface-bright": "#393939",
+                    "surface-variant": "#353534",
+                    "surface-tint": "#ffb59b",
+                    "surface-container": "#201f1f",
+                    "on-tertiary-fixed-variant": "#504700",
+                    "tertiary-fixed-dim": "#dcc841",
+                    "on-secondary-container": "#c5a8f3",
+                    "primary-container": "#ff6d33",
+                    "secondary-container": "#53397c",
+                    "surface-container-lowest": "#0e0e0e",
+                    "background": "#131313",
+                    "on-error": "#690005",
+                    "inverse-primary": "#a93700",
+                    "tertiary-container": "#bfac26",
+                    "surface-dim": "#131313",
+                    "secondary-fixed-dim": "#d6baff",
+                    "surface-container-highest": "#353534",
+                    "inverse-surface": "#e5e2e1",
+                    "error-container": "#93000a",
+                    "on-tertiary-fixed": "#201c00",
+                    "inverse-on-surface": "#313030",
+                    "on-primary-fixed": "#380d00",
+                    "surface-container-low": "#1c1b1b",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-container": "#484000",
+                    "on-secondary-fixed": "#26084d",
+                    "on-background": "#e5e2e1",
+                    "tertiary": "#dcc841",
+                    "on-secondary": "#3c2263",
+                    "outline-variant": "#594139",
+                    "on-surface-variant": "#e1bfb4",
+                    "on-surface": "#e5e2e1",
+                    "tertiary-fixed": "#f9e45b",
+                    "primary": "#ffb59b",
+                    "on-primary-fixed-variant": "#812800",
+                    "primary-fixed-dim": "#ffb59b",
+                    "secondary-fixed": "#ecdcff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding": "24px",
+                    "card-gap": "20px",
+                    "gutter": "16px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .mic-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .7; transform: scale(1.05); }
+        }
+        .glass-nav {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        body {
+            background-color: #131313;
+            color: #e5e2e1;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-32">
+<!-- Top AppBar (from JSON guidance) -->
+<header class="bg-background dark:bg-background flex justify-between items-center px-container-padding py-4 w-full sticky top-0 z-40">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvtgcasBJ3kB4wJBjHD5IJuVH5QoMZs3A-5CX5drc6tRMOm-peA1KFY34G1QhFTiKxb_MH0nddpsX4363H4cZd4uJ8uYZx4Iv0vPugpRUtwmkm3U7kErnVBVfEHhik_ydSMHHi6kKwGhrzufdnI2_taiR-3EgMsE0U0UEy7IhPXjUlPQdja4VPikuYK5294fcSWeXClpQ6ISNg2XXlTeFaNEdrTtVAFfw9ETdtR8RQi9vbokwzYvkIFj2vqkofzWaaX6xgl8UWPDI"/>
+</div>
+<h1 class="font-display-lg text-[24px] text-primary dark:text-primary tracking-tight">L'Italiano</h1>
+</div>
+<button class="text-primary hover:opacity-80 scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="px-container-padding space-y-8 mt-4">
+<!-- Welcome Section -->
+<section class="space-y-4 mb-12">
+<div class="space-y-1">
+<p class="text-secondary font-label-sm text-label-sm uppercase tracking-widest">Buongiorno, Luca!</p>
+<h2 class="font-display-lg text-display-lg leading-tight">Benvenuti!</h2>
+</div>
+<div class="relative group">
+<input class="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg px-6 py-5 text-on-surface focus:border-primary focus:ring-0 transition-all duration-300 placeholder:text-on-surface-variant font-body-md text-body-md" placeholder="Cosa vuoi dire? (e.g., 'Order a coffee')" type="text"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="search">search</span>
+</div>
+</div><button class="w-full mt-4 bg-primary text-on-primary font-headline-lg py-4 rounded-lg shadow-lg active:scale-[0.98] transition-transform duration-150 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+  Crea Scenario
+</button>
+</section>
+<!-- Voice Activation Hub -->
+<!-- Suggested Scenarios Bento Grid -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h3 class="font-headline-lg text-headline-lg">Suggested Scenarios</h3>
+<button class="text-primary font-label-sm text-label-sm flex items-center gap-1">
+                    See All <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-card-gap">
+<!-- Card 1: Soft Purple -->
+<div class="bg-secondary-container rounded-lg p-6 flex flex-col justify-between min-h-[220px] relative overflow-hidden group cursor-pointer">
+<div class="z-10">
+<div class="bg-on-secondary-container/20 w-fit p-2 rounded-full mb-4">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="chat_bubble">chat_bubble</span>
+</div>
+<h4 class="font-headline-lg text-headline-lg text-on-secondary-container leading-none">Talking to neighbors</h4>
+</div>
+<div class="absolute bottom-[-10px] right-[-10px] w-40 h-40 opacity-90 group-hover:scale-110 transition-transform duration-300">
+<img alt="Scenario Illustration" class="w-full h-full object-contain" data-alt="A stylized and vibrant flat vector illustration of a friendly Italian neighbor character leaning over a balcony, rendered in a modern-pop art style. The character features exaggerated, playful proportions with a warm color palette of terracotta and cream. The background includes minimal geometric shapes suggesting a Mediterranean villa under soft, ambient morning light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw0--7fvjyYUygHJBnROT6QifLX1tv_yQdjvoW8uWT92kYvs2-Vg25UilSt44u5t62suypEDz_1KlI3gBpwyZ9IBVChw3dBQoiY4Tmm7KFP4qxAT6AbRUkvOOvdKXGIdLARJIQ68p4XF2eipkAoWM6K9ttm4fkNiWn0r1yvgEP6RpuIrvzH2WE-1VcG087uDyHXHAwqlipwofaZ3nE0gQ5y2wAGjq4N8oBvXNPN-77AjUXad5e46OLLiRiXFzOYIc1PjQ9sAqpPBw"/>
+</div>
+</div>
+<!-- Card 2: Bright Orange -->
+<div class="bg-primary-container rounded-lg p-6 flex flex-col justify-between min-h-[220px] relative overflow-hidden group cursor-pointer">
+<div class="z-10">
+<div class="bg-on-primary-container/20 w-fit p-2 rounded-full mb-4">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="shopping_basket">shopping_basket</span>
+</div>
+<h4 class="font-headline-lg text-headline-lg text-on-primary-container leading-none">Market shopping</h4>
+</div>
+<div class="absolute bottom-[-10px] right-[-10px] w-40 h-40 opacity-90 group-hover:scale-110 transition-transform duration-300">
+<img alt="Scenario Illustration" class="w-full h-full object-contain" data-alt="A high-contrast, modern-pop digital illustration of a bustling Italian outdoor market stall overflowing with vibrant citrus fruits and fresh produce. A whimsical, round character with large expressive eyes interacts with a basket, styled with bold black outlines and a saturated palette of oranges and yellows. The lighting is bright and cheerful, emphasizing the kinetic energy and premium lifestyle feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhVg5RDWbno4DKnwKN9KlUaqtpa5xgYgm72EehTGAd_Ew3KwQ341Zka57rvz2_CZXa6VdlcShq0Bx7M-pdN43I3uAzfAh_UVVMMqDpjAIfyV7jydCMBLtWWfKU6GBmCdm8quS8Rtg5hsy6K_34ZBNKHFWMmYGrifhvx-rXPX35sEwFtBUk9tPfw30eLosatX9HremOfqg57_6D0WIDwRALWEXDNlUUZJvqHu8CIlYIODJ4AQdt9IiXo71aHoi0518uxJpBFcYxj5I"/>
+</div>
+</div>
+<!-- Card 3: Mint Green / Tertiary -->
+<div class="bg-tertiary-container rounded-lg p-6 flex flex-col justify-between min-h-[220px] relative overflow-hidden group cursor-pointer md:col-span-2">
+<div class="z-10 max-w-[60%]">
+<div class="bg-on-tertiary-container/20 w-fit p-2 rounded-full mb-4">
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="restaurant">restaurant</span>
+</div>
+<h4 class="font-headline-lg text-headline-lg text-on-tertiary-container leading-none">At the Trattoria</h4>
+<p class="text-on-tertiary-container/80 font-body-md text-body-md mt-2">Master the art of ordering fine wine and pasta.</p>
+</div>
+<div class="absolute bottom-[-20px] right-2 w-48 h-48 opacity-90 group-hover:translate-y-[-10px] transition-transform duration-300">
+<img alt="Scenario Illustration" class="w-full h-full object-contain" data-alt="A playful, character-driven illustration of a squishy, high-roundness character happily dining at a minimalist Italian trattoria. The art style is vibrant and high-energy, using a dominant mint green and mustard yellow palette against a deep dark mode background. Soft, volumetric lighting highlights the character's enthusiastic expression, creating a sense of approachable excitement and premium educational experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAq9OyYcwO_h1PcD2AYOu8mLkxt1VNy7ISnTToeQeH1kJYF6Rsag9iOgEJfyBFwDd-qnXd41JjrDL2bAnnREZcYrc1H4yhtLbSeuNq0BNmTQXrTDbDgA54d-R-ER7kwZy_OuMK_s5UdsXnKbahuQNH3VIedaEdISTnL1FQRLRqtdBr0hhdzN8FcoFqUxh1zCdb6HXXE7mj95lRgmagxbxbAv-v71AxeweBlNWPlAqOBFJqw1coBALhacX8T0IEMAxiID2OrHbnnfSE"/>
+</div>
+</div>
+<!-- Random Scenario Generator Card -->
+<div class="border-2 border-dashed border-outline-variant rounded-lg p-6 flex flex-col items-center justify-center min-h-[160px] group cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 md:col-span-2">
+<div class="bg-surface-container-high w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-primary text-[32px]" data-icon="shuffle">shuffle</span>
+</div>
+<h4 class="font-headline-lg text-headline-lg text-on-surface text-center tracking-tight">Genera Scenario Casuale</h4>
+<p class="text-on-surface-variant font-body-md text-body-md mt-1">Lasciati sorprendere dall'IA</p>
+</div></div>
+</section>
+<!-- Daily Progress Mini Widget -->
+<section class="bg-surface-container rounded-lg p-6 border border-outline-variant flex items-center justify-between">
+<div class="space-y-1">
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wide">Daily Goal</p>
+<h4 class="font-headline-lg text-headline-lg-mobile text-on-surface">12 / 20 mins</h4>
+<div class="w-full bg-background h-3 rounded-full mt-3 overflow-hidden">
+<div class="bg-tertiary h-full rounded-full w-[60%]"></div>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<div class="text-primary font-display-lg text-[32px] leading-none">🔥 4</div>
+<p class="text-on-surface-variant font-label-sm text-label-sm">Day Streak</p>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (from JSON guidance) -->
+<nav class="fixed bottom-8 left-0 right-0 z-50 flex justify-center gap-card-gap mx-auto glass-nav">
+<div class="bg-surface-container/80 dark:bg-surface-container/80 fixed bottom-8 left-1/2 -translate-x-1/2 w-auto rounded-full px-6 py-3 flex justify-center gap-4 backdrop-blur-md shadow-lg">
+<a class="bg-primary-container text-on-primary-container rounded-full p-3 scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+</a>
+<a class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+</a>
+<a class="text-on-surface-variant p-3 hover:bg-surface-variant rounded-full scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</a>
+</div>
+</nav>
+</body></html>
