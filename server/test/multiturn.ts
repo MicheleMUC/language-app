@@ -120,14 +120,11 @@ async function main() {
   await waitFor(ws, (m) => m.type === "audio", "greeting audio");
   console.log("✓ Greeting received\n");
 
-  // Turn 1
-  await runTurn(ws, "Turn 1");
-
-  // Brief pause between turns (simulates user thinking)
-  await sleep(1000);
-
-  // Turn 2
-  await runTurn(ws, "Turn 2");
+  const TURNS = 5;
+  for (let i = 1; i <= TURNS; i++) {
+    await runTurn(ws, `Turn ${i}`);
+    if (i < TURNS) await sleep(1000); // simulate user thinking
+  }
 
   // End session
   console.log("\nEnding session...");
@@ -135,7 +132,7 @@ async function main() {
   await sleep(500);
   ws.close();
 
-  console.log("\n✅ All turns succeeded — multi-turn conversation working correctly");
+  console.log(`\n✅ All ${TURNS} turns succeeded — multi-turn conversation working correctly`);
   process.exit(0);
 }
 
