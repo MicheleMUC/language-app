@@ -3,9 +3,9 @@ import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@go
 
 type ClientMsg =
   | { type: "start"; scenarioId: string; scenario: Record<string, unknown> }
-  | { type: "talk_start" }          // PTT pressed → activityStart
-  | { type: "audio"; data: string } // base64 PCM16 @ 16 kHz mono
-  | { type: "talk_end" }            // PTT released → activityEnd
+  | { type: "talk_start" }
+  | { type: "audio"; data: string; mimeType?: string }
+  | { type: "talk_end" }
   | { type: "end" };
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
@@ -75,6 +75,8 @@ export function handleConversationWs(ws: WebSocket) {
     const outTx = message.serverContent?.outputTranscription;
     if (outTx && "text" in outTx && typeof outTx.text === "string" && outTx.text) {
       txBuffer += outTx.text;
+      // Stream each fragment to the client immediately for word-by-word display
+      send({ type: "transcript_partial", italian: txBuffer.trim() });
     }
 
     const inTx = message.serverContent?.inputTranscription;
@@ -98,11 +100,39 @@ export function handleConversationWs(ws: WebSocket) {
     switch (msg.type) {
       case "start": {
         const { scenario } = msg;
-        const systemInstruction = `You are ${scenario.characterName}, ${scenario.characterDescription}.
-Setting: ${scenario.setting}.
-Speak ONLY in Italian. Be natural, warm, and patient with the language learner.
-Keep sentences short and clear for a ${scenario.difficulty} level learner.
-Start by greeting the user naturally in Italian.`;
+
+        const vocab = (scenario.vocabulary as Array<{ italian: string; english: string; example?: string }> ?? [])
+          .map((v) => `  - ${v.italian} (${v.english})${v.example ? `: "${v.example}"` : ""}`)
+          .join("\n");
+
+        const phrases = (scenario.likelyPhrases as string[] ?? []).join(", ");
+
+        const difficultyGuide =
+          scenario.difficulty === "A1" || scenario.difficulty === "A2"
+            ? "Use only simple present tense and very common words. Speak slowly and clearly."
+            : scenario.difficulty === "B1" || scenario.difficulty === "B2"
+            ? "Use a mix of present, past (passato prossimo), and future tenses naturally."
+            : "Use natural idiomatic Italian including subjunctive and regional expressions.";
+
+        const systemInstruction = `You are ${scenario.characterName}. ${scenario.characterDescription}
+Setting: ${scenario.setting}
+
+CONVERSATION RULES (follow strictly):
+- Speak ONLY in Italian. Never switch to English for any reason.
+- Keep every response to 1–2 short sentences. This is a real-time spoken conversation.
+- Respond DIRECTLY to what the learner just said — always acknowledge it first.
+- If you cannot understand the learner, say exactly: "Scusa, non ho capito. Puoi ripetere più lentamente?"
+- If the learner makes a grammar error, acknowledge their meaning and naturally model the correct form in your reply — never explicitly say "you made an error."
+- If the learner speaks English, redirect warmly: "Proviamo in italiano! Come si dice...?"
+- ${difficultyGuide}
+
+SCENARIO VOCABULARY — weave these in naturally when the topic arises:
+${vocab || "  (none specified)"}
+
+PHRASES you might use naturally:
+${phrases || "(none specified)"}
+
+Begin by greeting the learner warmly and setting the scene in one sentence.`;
 
         try {
           session = await ai.live.connect({
@@ -163,7 +193,7 @@ Start by greeting the user naturally in Italian.`;
         if (!session) return;
         try {
           session.sendRealtimeInput({
-            audio: { data: msg.data, mimeType: "audio/pcm;rate=16000" },
+            audio: { data: msg.data, mimeType: msg.mimeType ?? "audio/pcm;rate=16000" },
           });
         } catch (e) {
           console.error("Audio relay error:", e);

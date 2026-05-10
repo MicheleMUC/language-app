@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { Sidekick } from "@/components/Sidekick";
 import { useConversation } from "@/hooks/useConversation";
 import { useSidekick } from "@/hooks/useSidekick";
 import { saveSession } from "@/lib/supabase";
-import type { Scenario, ConversationTurn } from "@/types";
+import type { Scenario, ConversationTurn, VocabItem } from "@/types";
 
 function PulseRings() {
   const scale1 = useRef(new Animated.Value(1)).current;
@@ -54,7 +54,12 @@ function PulseRings() {
   );
 }
 
-function SessionReview({ turns, onRepeat, onHome }: { turns: ConversationTurn[]; onRepeat: () => void; onHome: () => void }) {
+function SessionReview({ turns, newVocabulary, onRepeat, onHome }: {
+  turns: ConversationTurn[];
+  newVocabulary: VocabItem[];
+  onRepeat: () => void;
+  onHome: () => void;
+}) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.reviewOverlay, { paddingBottom: insets.bottom + 24 }]}>
@@ -71,34 +76,32 @@ function SessionReview({ turns, onRepeat, onHome }: { turns: ConversationTurn[];
         {/* Stats bento */}
         <View style={styles.statsBento}>
           <View style={styles.statCardOrange}>
-            <Text style={{ fontSize: 20, color: "#380d00" }}>✨</Text>
-            <Text style={styles.statCardTitle}>Fluidità</Text>
-            <Text style={styles.statCardNum}>85%</Text>
-            <View style={styles.statBar}>
-              <View style={[styles.statBarFill, { width: "85%" }]} />
-            </View>
+            <Text style={{ fontSize: 20, color: "#380d00" }}>💬</Text>
+            <Text style={styles.statCardTitle}>Scambi</Text>
+            <Text style={styles.statCardNum}>{turns.length}</Text>
+            <Text style={[styles.statCardSub, { color: "#380d00" }]}>Turni di Dialogo</Text>
           </View>
           <View style={styles.statCardYellow}>
             <Text style={{ fontSize: 20, color: "#373100" }}>📖</Text>
             <Text style={[styles.statCardTitle, { color: "#373100" }]}>Termini</Text>
-            <Text style={[styles.statCardNum, { color: "#373100" }]}>+{turns.length}</Text>
+            <Text style={[styles.statCardNum, { color: "#373100" }]}>+{newVocabulary.length}</Text>
             <Text style={styles.statCardSub}>Nuovi Acquisiti</Text>
           </View>
         </View>
 
-        {/* Vocab from turns */}
-        {turns.length > 0 && (
+        {/* Encountered vocabulary */}
+        {newVocabulary.length > 0 && (
           <View style={{ marginBottom: 32 }}>
             <Text style={styles.reviewSectionLabel}>VOCABOLARIO ACQUISITO</Text>
             <View style={{ gap: 8 }}>
-              {turns.slice(0, 3).map((t, i) => (
+              {newVocabulary.map((v, i) => (
                 <View key={i} style={styles.vocabRow}>
                   <View style={styles.vocabIcon}>
                     <Text style={{ color: "#d6baff", fontSize: 18 }}>🔤</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.vocabItalian} numberOfLines={1}>{t.italian}</Text>
-                    {t.english && <Text style={styles.vocabEnglish} numberOfLines={1}>{t.english}</Text>}
+                    <Text style={styles.vocabItalian}>{v.italian}</Text>
+                    <Text style={styles.vocabEnglish}>{v.english}</Text>
                   </View>
                 </View>
               ))}
@@ -124,8 +127,15 @@ export default function ConversationScreen() {
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
 
   const [showSidekick, setShowSidekick] = useState(false);
-  const { status, turns, activeVocab, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
+
+  const newVocabulary = useMemo(() =>
+    scenario.vocabulary.filter((v) =>
+      turns.some((t) => t.role === "assistant" && t.italian.toLowerCase().includes(v.italian.toLowerCase()))
+    ),
+    [turns, scenario.vocabulary]
+  );
 
   const lastAiTurn = [...turns].reverse().find((t) => t.role === "assistant");
 
@@ -153,9 +163,9 @@ export default function ConversationScreen() {
       turns,
       startedAt: turns[0]?.timestamp ?? Date.now(),
       endedAt: Date.now(),
-      newVocabulary: [],
+      newVocabulary,
     }).catch(() => {/* non-fatal */});
-  }, [end, id, turns]);
+  }, [end, id, turns, newVocabulary]);
 
   const handleHome = useCallback(() => {
     router.back();
@@ -204,10 +214,10 @@ export default function ConversationScreen() {
           </View>
 
           {/* Speech text */}
-          {lastAiTurn && isConnected ? (
+          {(partialTranscript || lastAiTurn) && isConnected ? (
             <View style={styles.speechContent}>
               <Text style={styles.speakerLabel}>{scenario.characterName.toUpperCase()}</Text>
-              <Text style={styles.speechItalian}>"{lastAiTurn.italian}"</Text>
+              <Text style={styles.speechItalian}>"{partialTranscript || lastAiTurn!.italian}"</Text>
             </View>
           ) : (
             <View style={styles.idleContent}>
@@ -231,6 +241,13 @@ export default function ConversationScreen() {
                   : isModelSpeaking ? "STA RISPONDENDO..."
                   : "TIENI PREMUTO PER PARLARE"}
               </Text>
+            </View>
+          )}
+
+          {/* "Ho sentito" pill — shows what Gemini heard after PTT release */}
+          {isConnected && !isTalking && !!lastUserTranscript && (
+            <View style={styles.hoSentitoPill}>
+              <Text style={styles.hoSentitoText}>Ho sentito: «{lastUserTranscript}»</Text>
             </View>
           )}
         </View>
@@ -295,6 +312,7 @@ export default function ConversationScreen() {
       {isEnded && (
         <SessionReview
           turns={turns}
+          newVocabulary={newVocabulary}
           onRepeat={handleHome}
           onHome={handleHome}
         />
@@ -449,6 +467,15 @@ const styles = StyleSheet.create({
   vocabIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(214,186,255,0.1)", alignItems: "center", justifyContent: "center" },
   vocabItalian: { fontSize: 15, fontWeight: "700", color: "#e5e2e1" },
   vocabEnglish: { fontSize: 13, color: "#e1bfb4" },
+  hoSentitoPill: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 12,
+    maxWidth: "90%",
+  },
+  hoSentitoText: { fontSize: 13, color: "#e1bfb4", textAlign: "center", fontStyle: "italic", opacity: 0.75 },
   repeatBtn: { backgroundColor: "#ff6d33", borderRadius: 50, paddingVertical: 20, alignItems: "center", marginBottom: 16 },
   repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#5f1b00" },
   homeBtn: { backgroundColor: "#353534", borderRadius: 50, paddingVertical: 20, alignItems: "center", borderWidth: 1, borderColor: "#594139" },

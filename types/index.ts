@@ -43,15 +43,16 @@ export interface SidekickMessage {
 // WebSocket message types between app and Cloud Run relay
 export type WsClientMessage =
   | { type: "start"; scenarioId: string; scenario: Scenario }
-  | { type: "talk_start" }          // PTT pressed → activityStart to Gemini
-  | { type: "audio"; data: string } // base64 PCM16 chunks while PTT held
-  | { type: "talk_end" }            // PTT released → activityEnd to Gemini
+  | { type: "talk_start" }
+  | { type: "audio"; data: string; mimeType?: string } // mimeType varies by platform
+  | { type: "talk_end" }
   | { type: "end" };
 
 export type WsServerMessage =
   | { type: "ready" }
-  | { type: "audio"; data: string; mimeType?: string } // base64 audio from Gemini
+  | { type: "audio"; data: string; mimeType?: string }
   | { type: "transcript"; role: "user" | "assistant"; text: string; italian: string }
+  | { type: "transcript_partial"; italian: string } // streaming word-by-word from model
   | { type: "vocab_hint"; item: VocabItem }
-  | { type: "interrupt" }           // model output was cut — stop playback now
+  | { type: "interrupt" }
   | { type: "error"; message: string };

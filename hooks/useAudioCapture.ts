@@ -1,36 +1,49 @@
 import { useRef, useCallback, useEffect } from "react";
+import { Platform } from "react-native";
 import { useAudioRecorder, AudioModule, AudioQuality, IOSOutputFormat } from "expo-audio";
 
-const PCM_OPTIONS = {
-  extension: ".wav",
-  sampleRate: 16000,
-  numberOfChannels: 1,
-  bitRate: 256000,
-  android: {
-    outputFormat: "mpeg4" as const,
-    audioEncoder: "aac" as const,
-  },
-  ios: {
-    outputFormat: IOSOutputFormat.LINEARPCM,
-    audioQuality: AudioQuality.MAX,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: {
-    mimeType: "audio/wav",
-  },
-};
+// iOS: true Linear PCM written as a growing WAV file — we skip the 44-byte
+// header and stream raw PCM16 samples to the server.
+// Android: AAC-ADTS bytestream — no container header, starts at byte 0.
+// The server labels each chunk with the correct MIME type.
+const IS_ANDROID = Platform.OS === "android";
 
-const WAV_HEADER_BYTES = 44;
+const RECORDING_OPTIONS = IS_ANDROID
+  ? {
+      extension: ".aac",
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      bitRate: 64000,
+      android: {
+        outputFormat: "aac_adts" as const,
+        audioEncoder: "aac" as const,
+      },
+    }
+  : {
+      extension: ".wav",
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      bitRate: 256000,
+      ios: {
+        outputFormat: IOSOutputFormat.LINEARPCM,
+        audioQuality: AudioQuality.MAX,
+        linearPCMBitDepth: 16,
+        linearPCMIsBigEndian: false,
+        linearPCMIsFloat: false,
+      },
+      web: { mimeType: "audio/wav" },
+    };
 
-export function useAudioCapture(onChunk: (base64: string) => void) {
-  const recorder = useAudioRecorder(PCM_OPTIONS);
+// iOS WAV files start with a 44-byte header; Android AAC-ADTS has no header.
+const HEADER_BYTES = IS_ANDROID ? 0 : 44;
+
+export const AUDIO_MIME_TYPE = IS_ANDROID ? "audio/aac" : "audio/pcm;rate=16000";
+
+export function useAudioCapture(onChunk: (base64: string, mimeType: string) => void) {
+  const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderActiveRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const capturingRef = useRef(false);
-  // Byte offset at the start of the current PTT turn — only audio after this
-  // point is sent, so previous turns don't get re-transmitted.
   const turnOffsetRef = useRef(0);
 
   useEffect(() => {
@@ -48,12 +61,11 @@ export function useAudioCapture(onChunk: (base64: string) => void) {
 
   const start = useCallback(async () => {
     if (!recorderActiveRef.current) {
-      // First PTT press: start the recorder and the polling interval once.
       await AudioModule.requestRecordingPermissionsAsync();
       await recorder.prepareToRecordAsync();
       recorder.record();
       recorderActiveRef.current = true;
-      turnOffsetRef.current = 0; // first interval tick will skip WAV header
+      turnOffsetRef.current = 0;
 
       intervalRef.current = setInterval(async () => {
         if (!capturingRef.current) return;
@@ -62,30 +74,26 @@ export function useAudioCapture(onChunk: (base64: string) => void) {
         try {
           const response = await fetch(uri);
           const buffer = await response.arrayBuffer();
-          const startAt = turnOffsetRef.current === 0 ? WAV_HEADER_BYTES : turnOffsetRef.current;
+          const startAt = turnOffsetRef.current === 0 ? HEADER_BYTES : turnOffsetRef.current;
           if (buffer.byteLength <= startAt) return;
           const slice = buffer.slice(startAt);
           turnOffsetRef.current = buffer.byteLength;
           const bytes = new Uint8Array(slice);
           let binary = "";
           for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-          onChunk(btoa(binary));
+          onChunk(btoa(binary), AUDIO_MIME_TYPE);
         } catch {
           // File may not be accessible yet
         }
       }, 100);
     } else {
-      // Subsequent PTT presses: snap the current file size as the new turn
-      // start so we never re-send audio from previous turns.
       const uri = recorder.uri;
       if (uri) {
         try {
           const res = await fetch(uri);
           const buf = await res.arrayBuffer();
           turnOffsetRef.current = buf.byteLength;
-        } catch {
-          // keep existing offset — next interval tick will catch up
-        }
+        } catch { /* keep existing offset */ }
       }
     }
 
@@ -94,8 +102,6 @@ export function useAudioCapture(onChunk: (base64: string) => void) {
 
   const stop = useCallback(async () => {
     capturingRef.current = false;
-    // Recorder stays running between turns — calling stop() on Android
-    // releases the native object and makes it unre-usable for future turns.
   }, []);
 
   return { start, stop };

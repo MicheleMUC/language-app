@@ -9,6 +9,8 @@ type Status = "idle" | "connecting" | "active" | "talking" | "ended";
 export function useConversation(scenario: Scenario) {
   const [status, setStatus] = useState<Status>("idle");
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
+  const [partialTranscript, setPartialTranscript] = useState("");
+  const [lastUserTranscript, setLastUserTranscript] = useState("");
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
   const player = useAudioPlayer(null);
@@ -33,10 +35,18 @@ export function useConversation(scenario: Scenario) {
           playAudio(msg.data, msg.mimeType ?? "audio/wav");
           break;
         case "transcript":
+          if (msg.role === "user") {
+            setLastUserTranscript(msg.italian);
+          } else {
+            setPartialTranscript(""); // clear partial when final arrives
+          }
           setTurns((prev) => [
             ...prev,
             { role: msg.role, italian: msg.italian, english: msg.text, timestamp: Date.now() },
           ]);
+          break;
+        case "transcript_partial":
+          setPartialTranscript(msg.italian);
           break;
         case "vocab_hint":
           setActiveVocab(msg.item);
@@ -44,15 +54,16 @@ export function useConversation(scenario: Scenario) {
           break;
         case "interrupt":
           try { player.pause(); } catch { /* ignore */ }
+          setPartialTranscript("");
           break;
       }
     },
-    [playAudio]
+    [playAudio, player]
   );
 
   const { start: startCapture, stop: stopCapture } = useAudioCapture(
-    useCallback((base64: string) => {
-      socketRef.current?.sendAudio(base64);
+    useCallback((base64: string, mimeType: string) => {
+      socketRef.current?.sendAudio(base64, mimeType);
     }, [])
   );
 
@@ -66,10 +77,9 @@ export function useConversation(scenario: Scenario) {
 
   const startTalking = useCallback(async () => {
     if (!socketRef.current) return;
-    // talk_start → server sends activityStart to Gemini (interrupts model output)
-    // and echoes back { type: "interrupt" } which pauses the player
     socketRef.current.send({ type: "talk_start" });
     setStatus("talking");
+    setLastUserTranscript(""); // clear previous "Ho sentito" while speaking
     await startCapture();
   }, [startCapture]);
 
@@ -90,6 +100,8 @@ export function useConversation(scenario: Scenario) {
   return {
     status,
     turns,
+    partialTranscript,
+    lastUserTranscript,
     activeVocab,
     isModelSpeaking: playerStatus.playing,
     start,
