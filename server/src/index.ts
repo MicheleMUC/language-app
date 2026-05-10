@@ -1,0 +1,27 @@
+import express from "express";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
+import { scenarioRouter } from "./scenario";
+import { sidekickRouter } from "./sidekick";
+import { handleConversationWs } from "./gemini-relay";
+
+const app = express();
+app.use(express.json());
+
+app.get("/health", (_req, res) => res.json({ ok: true }));
+app.use("/scenario", scenarioRouter);
+app.use("/sidekick", sidekickRouter);
+
+const server = createServer(app);
+const wss = new WebSocketServer({ server, path: "/ws" });
+
+wss.on("connection", (ws) => {
+  console.log("Client connected");
+  handleConversationWs(ws);
+  ws.on("close", () => console.log("Client disconnected"));
+});
+
+const PORT = parseInt(process.env.PORT ?? "3001", 10);
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
