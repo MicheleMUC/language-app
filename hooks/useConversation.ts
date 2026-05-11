@@ -64,7 +64,9 @@ export function useConversation(scenario: Scenario) {
           if (msg.role === "user") {
             setLastUserTranscript(msg.italian);
           } else {
-            setPartialTranscript(""); // clear partial when final arrives
+            setPartialTranscript("");
+            // Fallback: also transition if audio message didn't arrive first
+            setStatus((prev) => prev === "thinking" ? "active" : prev);
           }
           setTurns((prev) => [
             ...prev,
@@ -83,6 +85,10 @@ export function useConversation(scenario: Scenario) {
           isDrainingRef.current = false;
           try { player.pause(); } catch { /* ignore */ }
           setPartialTranscript("");
+          break;
+        case "error":
+          // Server-side error (e.g. Gemini session closed) — end the session
+          setStatus("ended");
           break;
       }
     },

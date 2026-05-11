@@ -3,13 +3,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 const ITEMS = [
-  { key: "home", icon: "🏠", filledIcon: "🏠", route: "/" as const },
-  { key: "history", icon: "📚", filledIcon: "📚", route: "/(tabs)/history" as const },
-  { key: "scenarios", icon: "🗺️", filledIcon: "🗺️", route: "/(tabs)/scenarios" as const },
+  { key: "home", icon: "🏠", route: "/" as const },
+  { key: "history", icon: "📚", route: "/(tabs)/history" as const },
+  { key: "vocabulary", icon: "📖", route: "/(tabs)/vocabulary" as const },
+  { key: "scenarios", icon: "🗺️", route: "/(tabs)/scenarios" as const },
 ];
 
 interface Props {
-  active: "home" | "history" | "scenarios";
+  active: "home" | "history" | "vocabulary" | "scenarios";
 }
 
 export function FloatingNav({ active }: Props) {
@@ -24,13 +25,11 @@ export function FloatingNav({ active }: Props) {
           return (
             <TouchableOpacity
               key={item.key}
-              onPress={() => item.route && router.navigate(item.route)}
+              onPress={() => router.navigate(item.route)}
               style={[styles.item, isActive && styles.activeItem]}
               activeOpacity={0.75}
             >
-              <Text style={[styles.icon, isActive && styles.activeIcon]}>
-                {item.icon}
-              </Text>
+              <Text style={styles.icon}>{item.icon}</Text>
             </TouchableOpacity>
           );
         })}
@@ -50,7 +49,7 @@ const styles = StyleSheet.create({
   pill: {
     backgroundColor: "rgba(32,31,31,0.96)",
     borderRadius: 50,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     flexDirection: "row",
     gap: 4,
@@ -59,12 +58,11 @@ const styles = StyleSheet.create({
   },
   item: {
     borderRadius: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   activeItem: { backgroundColor: "#ff6d33" },
   icon: { fontSize: 20 },
-  activeIcon: {},
 });

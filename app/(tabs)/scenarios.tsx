@@ -14,6 +14,8 @@ import { ScenarioCard } from "@/components/ScenarioCard";
 import { FloatingNav } from "@/components/FloatingNav";
 import { generateScenario } from "@/lib/api";
 import { saveScenario } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
+import { usePreferences } from "@/hooks/usePreferences";
 import type { Scenario } from "@/types";
 
 type Difficulty = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | null;
@@ -55,6 +57,8 @@ export default function ScenariosScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingIntent, setLoadingIntent] = useState<string | null>(null);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const { user } = useAuth();
+  const { level } = usePreferences(user?.id);
 
   useEffect(() => {
     if (!loading) { setLoadingMsgIdx(0); return; }
@@ -71,7 +75,7 @@ export default function ScenariosScreen() {
     setLoading(true);
     setLoadingIntent(intent);
     try {
-      const generated = await generateScenario(intent, "anonymous");
+      const generated = await generateScenario(intent, user?.id ?? "", level);
       const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {

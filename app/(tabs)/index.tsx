@@ -15,6 +15,9 @@ import { ScenarioCard } from "@/components/ScenarioCard";
 import { FloatingNav } from "@/components/FloatingNav";
 import { generateScenario } from "@/lib/api";
 import { saveScenario } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
+import { useStats } from "@/hooks/useStats";
+import { usePreferences } from "@/hooks/usePreferences";
 import type { Scenario } from "@/types";
 
 const SUGGESTED = [
@@ -42,19 +45,29 @@ const SUGGESTED = [
   },
 ];
 
+function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Buongiorno!";
+  if (hour < 18) return "Buon pomeriggio!";
+  return "Buonasera!";
+}
+
 export default function HomeScreen() {
   const [intent, setIntent] = useState("");
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { streak, todayMinutes, loading: statsLoading } = useStats(user?.id);
+  const { level } = usePreferences(user?.id);
 
   const handleSubmit = async (customIntent?: string) => {
     const trimmed = (customIntent ?? intent).trim();
     if (!trimmed || loading) return;
     setLoading(true);
     try {
-      const generated = await generateScenario(trimmed, "anonymous");
+      const generated = await generateScenario(trimmed, user?.id ?? "", level);
       const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {
@@ -78,6 +91,8 @@ export default function HomeScreen() {
     );
   }
 
+  const progressPct = Math.min((todayMinutes / 20) * 100, 100);
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -86,7 +101,7 @@ export default function HomeScreen() {
           <View style={styles.headerLeft}>
             <TouchableOpacity
               style={styles.avatar}
-              onPress={() => Alert.alert("Profilo", "Funzione in arrivo.")}
+              onPress={() => router.push("/(tabs)/profile")}
               activeOpacity={0.7}
             />
             <Text style={styles.logo}>L'Italiano</Text>
@@ -102,7 +117,7 @@ export default function HomeScreen() {
         >
           {/* Welcome */}
           <View style={styles.welcome}>
-            <Text style={styles.welcomeSub}>Buongiorno!</Text>
+            <Text style={styles.welcomeSub}>{timeGreeting()}</Text>
             <Text style={styles.welcomeTitle}>Benvenuti!</Text>
           </View>
 
@@ -188,13 +203,15 @@ export default function HomeScreen() {
           <View style={styles.progressCard}>
             <View style={{ flex: 1 }}>
               <Text style={styles.progressLabel}>Daily Goal</Text>
-              <Text style={styles.progressValue}>12 / 20 mins</Text>
+              <Text style={styles.progressValue}>
+                {statsLoading ? "— / 20 mins" : `${todayMinutes} / 20 mins`}
+              </Text>
               <View style={styles.progressTrack}>
-                <View style={styles.progressFill} />
+                <View style={[styles.progressFill, { width: `${statsLoading ? 0 : progressPct}%` }]} />
               </View>
             </View>
             <View style={styles.streak}>
-              <Text style={styles.streakNum}>🔥 4</Text>
+              <Text style={styles.streakNum}>🔥 {statsLoading ? "—" : streak}</Text>
               <Text style={styles.streakLabel}>Day Streak</Text>
             </View>
           </View>
@@ -312,7 +329,7 @@ const styles = StyleSheet.create({
   progressLabel: { fontSize: 11, fontWeight: "700", color: "#e1bfb4", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 },
   progressValue: { fontSize: 22, fontWeight: "700", color: "#e5e2e1", marginBottom: 12 },
   progressTrack: { height: 12, backgroundColor: "#131313", borderRadius: 6, overflow: "hidden" },
-  progressFill: { width: "60%", height: "100%", backgroundColor: "#dcc841", borderRadius: 6 },
+  progressFill: { height: "100%", backgroundColor: "#dcc841", borderRadius: 6 },
   streak: { alignItems: "center" },
   streakNum: { fontSize: 28, fontWeight: "800", color: "#ffb59b" },
   streakLabel: { fontSize: 11, fontWeight: "700", color: "#e1bfb4" },

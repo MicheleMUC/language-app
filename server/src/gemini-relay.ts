@@ -21,6 +21,7 @@ export function handleConversationWs(ws: WebSocket) {
   let txBuffer = "";
   const audioChunks: Buffer[] = [];
   let flushInterval: ReturnType<typeof setInterval> | null = null;
+  let turnTimeout: ReturnType<typeof setTimeout> | null = null;
 
   function send(obj: unknown) {
     if (ws.readyState === ws.OPEN) {
@@ -69,6 +70,7 @@ export function handleConversationWs(ws: WebSocket) {
   }
 
   function flushTurn() {
+    if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null; }
     stopFlushInterval();
     if (audioChunks.length > 0) {
       const pcm = Buffer.concat(audioChunks);
@@ -185,6 +187,8 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
                 console.log("Live session closed:", e?.code, e?.reason);
                 session = null;
                 send({ type: "error", message: `Session closed (${e?.code ?? "unknown"})` });
+                // Close the client WebSocket so the client transitions to "ended"
+                if (ws.readyState === ws.OPEN) ws.close();
               },
             },
           });
@@ -234,6 +238,13 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
           // activityEnd alone doesn't trigger generation on this model;
           // sendClientContent with turnComplete is the explicit trigger.
           session.sendClientContent({ turns: [], turnComplete: true });
+          // Safety net: if Gemini doesn't respond within 20s, notify the client
+          if (turnTimeout) clearTimeout(turnTimeout);
+          turnTimeout = setTimeout(() => {
+            turnTimeout = null;
+            console.error("Gemini turn timeout — no response within 20s");
+            send({ type: "error", message: "No response from Gemini — please try again" });
+          }, 20_000);
         } catch (e) {
           console.error("talk_end error:", e);
         }
@@ -241,6 +252,7 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
       }
 
       case "end":
+        if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null; }
         stopFlushInterval();
         try {
           await session?.close();
@@ -253,6 +265,7 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
   });
 
   ws.on("close", async () => {
+    if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null; }
     stopFlushInterval();
     try {
       await session?.close();

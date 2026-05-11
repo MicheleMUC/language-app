@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { scenarioRouter } from "./scenario";
 import { sidekickRouter } from "./sidekick";
+import { feedbackRouter } from "./feedback";
 import { handleConversationWs } from "./gemini-relay";
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(express.json());
 app.get("/health", (_req, res) => res.json({ ok: true }));
 app.use("/scenario", scenarioRouter);
 app.use("/sidekick", sidekickRouter);
+app.use("/feedback", feedbackRouter);
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });

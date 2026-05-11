@@ -27,3 +27,38 @@ create table if not exists sessions (
 -- indexes for history screen (most recent first per user)
 create index if not exists sessions_user_created on sessions (user_id, created_at desc);
 create index if not exists scenarios_user_created on scenarios (user_id, created_at desc);
+
+-- user_preferences: one row per user storing their CEFR level
+create table if not exists user_preferences (
+  user_id text primary key,
+  level text not null default 'A2',
+  updated_at timestamptz not null default now()
+);
+
+-- alter table user_preferences enable row level security;
+-- create policy "users own prefs" on user_preferences for all
+--   using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
+
+-- user_vocabulary: deduplicated vocabulary bank across all sessions
+create table if not exists user_vocabulary (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  italian text not null,
+  english text not null,
+  example text,
+  first_seen_at timestamptz not null default now(),
+  constraint user_vocabulary_unique unique (user_id, italian)
+);
+
+create index if not exists user_vocab_user on user_vocabulary (user_id, first_seen_at desc);
+
+-- Row Level Security (apply after enabling auth)
+-- alter table sessions enable row level security;
+-- create policy "users own sessions" on sessions for all
+--   using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
+-- alter table scenarios enable row level security;
+-- create policy "users own scenarios" on scenarios for all
+--   using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
+-- alter table user_vocabulary enable row level security;
+-- create policy "users own vocab" on user_vocabulary for all
+--   using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);

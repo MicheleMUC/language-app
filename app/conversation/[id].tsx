@@ -16,7 +16,10 @@ import { VocabHint } from "@/components/VocabHint";
 import { Sidekick } from "@/components/Sidekick";
 import { useConversation } from "@/hooks/useConversation";
 import { useSidekick } from "@/hooks/useSidekick";
-import { saveSession } from "@/lib/supabase";
+import { usePreferences } from "@/hooks/usePreferences";
+import { saveSession, upsertVocabulary } from "@/lib/supabase";
+import { requestFeedback } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import type { Scenario, ConversationTurn, VocabItem } from "@/types";
 
 function PulseRings() {
@@ -55,9 +58,50 @@ function PulseRings() {
   );
 }
 
-function SessionReview({ turns, newVocabulary, onRepeat, onHome }: {
+function FeedbackCard({
+  feedback,
+  loading,
+}: {
+  feedback: { praise: string; tip: string } | null;
+  loading: boolean;
+}) {
+  if (!loading && !feedback) return null;
+  return (
+    <View style={styles.feedbackCard}>
+      <Text style={styles.feedbackLabel}>IL TUO FEEDBACK</Text>
+      {loading ? (
+        <View style={styles.feedbackLoading}>
+          <ActivityIndicator size="small" color="#d6baff" />
+          <Text style={styles.feedbackLoadingText}>Analisi in corso...</Text>
+        </View>
+      ) : feedback ? (
+        <View style={{ gap: 12 }}>
+          <View style={styles.feedbackRow}>
+            <Text style={styles.feedbackEmoji}>💬</Text>
+            <Text style={styles.feedbackPraise}>{feedback.praise}</Text>
+          </View>
+          <View style={styles.feedbackRow}>
+            <Text style={styles.feedbackEmoji}>💡</Text>
+            <Text style={styles.feedbackTip}>{feedback.tip}</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function SessionReview({
+  turns,
+  newVocabulary,
+  feedback,
+  feedbackLoading,
+  onRepeat,
+  onHome,
+}: {
   turns: ConversationTurn[];
   newVocabulary: VocabItem[];
+  feedback: { praise: string; tip: string } | null;
+  feedbackLoading: boolean;
   onRepeat: () => void;
   onHome: () => void;
 }) {
@@ -89,6 +133,9 @@ function SessionReview({ turns, newVocabulary, onRepeat, onHome }: {
             <Text style={styles.statCardSub}>Nuovi Acquisiti</Text>
           </View>
         </View>
+
+        {/* AI Feedback */}
+        <FeedbackCard feedback={feedback} loading={feedbackLoading} />
 
         {/* Encountered vocabulary */}
         {newVocabulary.length > 0 && (
@@ -127,7 +174,12 @@ export default function ConversationScreen() {
   const insets = useSafeAreaInsets();
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
 
+  const { user } = useAuth();
+  const { level } = usePreferences(user?.id);
   const [showSidekick, setShowSidekick] = useState(false);
+  const [feedback, setFeedback] = useState<{ praise: string; tip: string } | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   const { status, turns, partialTranscript, lastUserTranscript, activeVocab, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
@@ -153,29 +205,54 @@ export default function ConversationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSidekick = useCallback(() => {
-    setShowSidekick(true);
-  }, []);
-
-  const handleSidekickClose = useCallback(() => {
-    setShowSidekick(false);
-  }, []);
-
   const handleEnd = useCallback(async () => {
     await end();
+    const userId = user?.id ?? "";
+
+    // Don't persist drive-by taps (< 2 turns means nothing meaningful happened)
+    if (turns.length < 2) return;
+
     await saveSession({
       scenarioId: id,
-      userId: "anonymous",
+      userId,
       turns,
       startedAt: turns[0]?.timestamp ?? Date.now(),
       endedAt: Date.now(),
       newVocabulary,
-    }).catch(() => {/* non-fatal */});
-  }, [end, id, turns, newVocabulary]);
+    }).catch(() => {});
+    upsertVocabulary(userId, newVocabulary).catch(() => {});
+
+    // Request AI feedback if the user spoke at least once
+    const userTurnCount = turns.filter((t) => t.role === "user").length;
+    if (userTurnCount >= 1) {
+      setFeedbackLoading(true);
+      requestFeedback(turns, scenario, level)
+        .then(setFeedback)
+        .catch(() => {})
+        .finally(() => setFeedbackLoading(false));
+    }
+  }, [end, id, turns, newVocabulary, user, scenario, level]);
+
+  const handleConfirmEnd = useCallback(() => {
+    Alert.alert(
+      "Termina conversazione?",
+      "Il progresso sarà salvato.",
+      [
+        { text: "Continua", style: "cancel" },
+        { text: "Termina", style: "destructive", onPress: handleEnd },
+      ]
+    );
+  }, [handleEnd]);
 
   const handleHome = useCallback(() => {
     router.back();
   }, [router]);
+
+  const handleRepeat = useCallback(() => {
+    router.replace(
+      `/conversation/${scenario.id}?scenarioData=${encodeURIComponent(JSON.stringify(scenario))}`
+    );
+  }, [router, scenario]);
 
   const isConnected = status === "active" || status === "thinking" || status === "talking";
   const isTalking = status === "talking";
@@ -190,7 +267,7 @@ export default function ConversationScreen() {
           <View style={styles.headerLeft}>
             <TouchableOpacity
               style={styles.avatar}
-              onPress={() => Alert.alert("Profilo", "Funzione in arrivo.")}
+              onPress={() => router.push("/(tabs)/profile")}
               activeOpacity={0.7}
             />
             <Text style={styles.logo}>L'Italiano</Text>
@@ -213,19 +290,16 @@ export default function ConversationScreen() {
 
         {/* Main content */}
         <View style={styles.main}>
-          {/* Avatar with pulse rings */}
           <View style={styles.avatarOuter}>
             <PulseRings />
             <View style={styles.avatarCircle}>
               <Text style={{ fontSize: 72 }}>🗣️</Text>
             </View>
-            {/* Wave bars pill below avatar */}
             <View style={styles.waveWrap}>
               <AudioWaveform active={isConnected} color={isTalking ? "#ff6d33" : isModelSpeaking ? "#dcc841" : "#594139"} />
             </View>
           </View>
 
-          {/* Speech text */}
           {(partialTranscript || lastAiTurn) && isConnected ? (
             <View style={styles.speechContent}>
               <Text style={styles.speakerLabel}>{scenario.characterName.toUpperCase()}</Text>
@@ -238,7 +312,6 @@ export default function ConversationScreen() {
             </View>
           )}
 
-          {/* Turn indicator pill */}
           {isConnected && (
             <View style={[styles.listeningPill, isTalking && styles.talkingPill, isThinking && styles.thinkingPill, isModelSpeaking && styles.modelPill]}>
               <View style={[styles.listeningDot,
@@ -259,7 +332,6 @@ export default function ConversationScreen() {
             </View>
           )}
 
-          {/* "Ho sentito" pill — shows what Gemini heard after PTT release */}
           {isConnected && !isTalking && !!lastUserTranscript && (
             <View style={styles.hoSentitoPill}>
               <Text style={styles.hoSentitoText}>Ho sentito: «{lastUserTranscript}»</Text>
@@ -267,7 +339,6 @@ export default function ConversationScreen() {
           )}
         </View>
 
-        {/* VocabHint */}
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
           <VocabHint item={activeVocab} />
         </View>
@@ -282,7 +353,7 @@ export default function ConversationScreen() {
           ) : (
             <View style={styles.controls}>
               <TouchableOpacity
-                onPress={handleSidekick}
+                onPress={() => setShowSidekick(true)}
                 style={styles.sideBtn}
                 activeOpacity={0.7}
               >
@@ -305,7 +376,7 @@ export default function ConversationScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleEnd}
+                onPress={isEnded ? handleHome : handleConfirmEnd}
                 style={styles.sideBtn}
                 activeOpacity={0.7}
               >
@@ -322,18 +393,19 @@ export default function ConversationScreen() {
         <SessionReview
           turns={turns}
           newVocabulary={newVocabulary}
-          onRepeat={handleHome}
+          feedback={feedback}
+          feedbackLoading={feedbackLoading}
+          onRepeat={handleRepeat}
           onHome={handleHome}
         />
       )}
 
-      {/* Sidekick panel */}
       {showSidekick && (
         <Sidekick
           messages={sidekickMessages}
           loading={sidekickLoading}
           onAsk={ask}
-          onClose={handleSidekickClose}
+          onClose={() => setShowSidekick(false)}
         />
       )}
     </View>
@@ -441,18 +513,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#c44a1a",
     transform: [{ scale: 1.1 }],
   },
-  talkingPill: {
-    backgroundColor: "rgba(255,109,51,0.1)",
-    borderColor: "rgba(255,109,51,0.3)",
-  },
-  thinkingPill: {
-    backgroundColor: "rgba(123,94,167,0.1)",
-    borderColor: "rgba(123,94,167,0.3)",
-  },
-  modelPill: {
-    backgroundColor: "rgba(220,200,65,0.1)",
-    borderColor: "rgba(220,200,65,0.3)",
-  },
+  talkingPill: { backgroundColor: "rgba(255,109,51,0.1)", borderColor: "rgba(255,109,51,0.3)" },
+  thinkingPill: { backgroundColor: "rgba(123,94,167,0.1)", borderColor: "rgba(123,94,167,0.3)" },
+  modelPill: { backgroundColor: "rgba(220,200,65,0.1)", borderColor: "rgba(220,200,65,0.3)" },
   // Session review
   reviewOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "#131313", zIndex: 100 },
   reviewHero: {
@@ -473,8 +536,6 @@ const styles = StyleSheet.create({
   statCardTitle: { fontSize: 18, fontWeight: "700", color: "#380d00" },
   statCardNum: { fontSize: 36, fontWeight: "800", color: "#380d00" },
   statCardSub: { fontSize: 10, fontWeight: "700", color: "#373100", textTransform: "uppercase", letterSpacing: 1 },
-  statBar: { height: 8, backgroundColor: "rgba(56,13,0,0.2)", borderRadius: 4, overflow: "hidden" },
-  statBarFill: { height: "100%", backgroundColor: "#380d00", borderRadius: 4 },
   reviewSectionLabel: { fontSize: 11, fontWeight: "700", color: "#e1bfb4", letterSpacing: 3, textTransform: "uppercase", marginBottom: 12 },
   vocabRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#201f1f", borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: "#594139" },
   vocabIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(214,186,255,0.1)", alignItems: "center", justifyContent: "center" },
@@ -493,4 +554,32 @@ const styles = StyleSheet.create({
   repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#5f1b00" },
   homeBtn: { backgroundColor: "#353534", borderRadius: 50, paddingVertical: 20, alignItems: "center", borderWidth: 1, borderColor: "#594139" },
   homeBtnText: { fontSize: 16, fontWeight: "700", color: "#e5e2e1" },
+  // Feedback card
+  feedbackCard: {
+    backgroundColor: "#1a1230",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(214,186,255,0.2)",
+  },
+  feedbackLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#d6baff",
+    letterSpacing: 3,
+    textTransform: "uppercase",
+    marginBottom: 16,
+  },
+  feedbackLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 4,
+  },
+  feedbackLoadingText: { fontSize: 14, color: "#a88a80", fontStyle: "italic" },
+  feedbackRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  feedbackEmoji: { fontSize: 18, marginTop: 2 },
+  feedbackPraise: { flex: 1, fontSize: 14, color: "#a8e4d4", lineHeight: 21, fontWeight: "500" },
+  feedbackTip: { flex: 1, fontSize: 14, color: "#ffb59b", lineHeight: 21, fontWeight: "500" },
 });

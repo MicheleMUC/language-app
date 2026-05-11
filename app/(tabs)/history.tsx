@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { FloatingNav } from "@/components/FloatingNav";
 import { loadSessions } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 import type { ConversationSession } from "@/types";
 
 export default function HistoryScreen() {
@@ -11,11 +12,13 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) return;
     const load = async () => {
       try {
-        setSessions(await loadSessions("anonymous"));
+        setSessions(await loadSessions(user.id));
       } catch {
         // non-fatal — show empty state
       } finally {
@@ -23,7 +26,7 @@ export default function HistoryScreen() {
       }
     };
     load();
-  }, []);
+  }, [user?.id]);
 
   return (
     <View style={styles.root}>
@@ -32,7 +35,7 @@ export default function HistoryScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.avatar}
-            onPress={() => Alert.alert("Profilo", "Funzione in arrivo.")}
+            onPress={() => router.push("/(tabs)/profile")}
             activeOpacity={0.7}
           />
           <Text style={styles.logo}>L'Italiano</Text>
