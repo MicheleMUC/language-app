@@ -17,10 +17,10 @@ import { Sidekick } from "@/components/Sidekick";
 import { useConversation } from "@/hooks/useConversation";
 import { useSidekick } from "@/hooks/useSidekick";
 import { usePreferences } from "@/hooks/usePreferences";
-import { saveSession, upsertVocabulary } from "@/lib/supabase";
+import { saveSession, upsertVocabulary, updateSessionFeedback } from "@/lib/supabase";
 import { requestFeedback } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Scenario, ConversationTurn, VocabItem } from "@/types";
+import type { Scenario, ConversationTurn, VocabItem, SessionFeedback } from "@/types";
 
 function PulseRings() {
   const scale1 = useRef(new Animated.Value(1)).current;
@@ -62,7 +62,7 @@ function FeedbackCard({
   feedback,
   loading,
 }: {
-  feedback: { praise: string; tip: string } | null;
+  feedback: SessionFeedback | null;
   loading: boolean;
 }) {
   if (!loading && !feedback) return null;
@@ -90,6 +90,56 @@ function FeedbackCard({
   );
 }
 
+function CorrectionsCard({ feedback }: { feedback: SessionFeedback }) {
+  const hasCorrections = feedback.corrections.length > 0;
+  const hasPatterns = feedback.patternsGood.length > 0 || feedback.patternsToImprove.length > 0;
+  if (!hasCorrections && !hasPatterns) return null;
+
+  return (
+    <View style={styles.correctionsCard}>
+      <Text style={styles.correctionsLabel}>ANALISI GRAMMATICALE</Text>
+
+      {hasCorrections && (
+        <View style={{ gap: 10, marginBottom: hasPatterns ? 16 : 0 }}>
+          {feedback.corrections.map((c, i) => (
+            <View key={i} style={styles.correctionRow}>
+              <View style={styles.correctionOriginal}>
+                <Text style={styles.correctionX}>✗</Text>
+                <Text style={styles.correctionOriginalText}>"{c.original}"</Text>
+              </View>
+              <View style={styles.correctionArrowRow}>
+                <Text style={styles.correctionArrow}>↓</Text>
+                <View style={styles.correctionFixed}>
+                  <Text style={styles.correctionCheck}>✓</Text>
+                  <Text style={styles.correctionFixedText}>"{c.corrected}"</Text>
+                </View>
+              </View>
+              <Text style={styles.correctionExplanation}>{c.explanation}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {hasPatterns && (
+        <View style={{ gap: 6 }}>
+          {feedback.patternsGood.map((p, i) => (
+            <View key={`g${i}`} style={styles.patternRow}>
+              <Text style={styles.patternGoodDot}>✓</Text>
+              <Text style={styles.patternGoodText}>{p}</Text>
+            </View>
+          ))}
+          {feedback.patternsToImprove.map((p, i) => (
+            <View key={`i${i}`} style={styles.patternRow}>
+              <Text style={styles.patternImproveDot}>→</Text>
+              <Text style={styles.patternImproveText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function SessionReview({
   turns,
   newVocabulary,
@@ -100,7 +150,7 @@ function SessionReview({
 }: {
   turns: ConversationTurn[];
   newVocabulary: VocabItem[];
-  feedback: { praise: string; tip: string } | null;
+  feedback: SessionFeedback | null;
   feedbackLoading: boolean;
   onRepeat: () => void;
   onHome: () => void;
@@ -136,6 +186,9 @@ function SessionReview({
 
         {/* AI Feedback */}
         <FeedbackCard feedback={feedback} loading={feedbackLoading} />
+
+        {/* Grammar corrections */}
+        {!feedbackLoading && feedback && <CorrectionsCard feedback={feedback} />}
 
         {/* Encountered vocabulary */}
         {newVocabulary.length > 0 && (
@@ -177,16 +230,24 @@ export default function ConversationScreen() {
   const { user } = useAuth();
   const { level } = usePreferences(user?.id);
   const [showSidekick, setShowSidekick] = useState(false);
-  const [feedback, setFeedback] = useState<{ praise: string; tip: string } | null>(null);
+  const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
 
   const { status, turns, partialTranscript, lastUserTranscript, activeVocab, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
-  const newVocabulary = useMemo(() =>
-    scenario.vocabulary.filter((v) =>
-      turns.some((t) => t.role === "assistant" && t.italian.toLowerCase().includes(v.italian.toLowerCase()))
-    ),
+  const newVocabulary = useMemo((): VocabItem[] =>
+    scenario.vocabulary
+      .filter((v) =>
+        turns.some((t) => t.role === "assistant" && t.italian.toLowerCase().includes(v.italian.toLowerCase()))
+      )
+      .map((v) => ({
+        ...v,
+        activelyUsed: turns.some(
+          (t) => t.role === "user" && t.italian.toLowerCase().includes(v.italian.toLowerCase())
+        ),
+      })),
     [turns, scenario.vocabulary]
   );
 
@@ -212,14 +273,15 @@ export default function ConversationScreen() {
     // Don't persist drive-by taps (< 2 turns means nothing meaningful happened)
     if (turns.length < 2) return;
 
-    await saveSession({
+    const sessionId = await saveSession({
       scenarioId: id,
       userId,
       turns,
       startedAt: turns[0]?.timestamp ?? Date.now(),
       endedAt: Date.now(),
       newVocabulary,
-    }).catch(() => {});
+    }).catch(() => null);
+    sessionIdRef.current = sessionId;
     upsertVocabulary(userId, newVocabulary).catch(() => {});
 
     // Request AI feedback if the user spoke at least once
@@ -227,7 +289,12 @@ export default function ConversationScreen() {
     if (userTurnCount >= 1) {
       setFeedbackLoading(true);
       requestFeedback(turns, scenario, level)
-        .then(setFeedback)
+        .then((fb) => {
+          setFeedback(fb);
+          if (sessionIdRef.current) {
+            updateSessionFeedback(sessionIdRef.current, fb).catch(() => {});
+          }
+        })
         .catch(() => {})
         .finally(() => setFeedbackLoading(false));
     }
@@ -582,4 +649,43 @@ const styles = StyleSheet.create({
   feedbackEmoji: { fontSize: 18, marginTop: 2 },
   feedbackPraise: { flex: 1, fontSize: 14, color: "#a8e4d4", lineHeight: 21, fontWeight: "500" },
   feedbackTip: { flex: 1, fontSize: 14, color: "#ffb59b", lineHeight: 21, fontWeight: "500" },
+  // Corrections card
+  correctionsCard: {
+    backgroundColor: "#191311",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,109,51,0.15)",
+  },
+  correctionsLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#e1bfb4",
+    letterSpacing: 3,
+    textTransform: "uppercase",
+    marginBottom: 14,
+  },
+  correctionRow: {
+    backgroundColor: "#201f1f",
+    borderRadius: 14,
+    padding: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#353534",
+  },
+  correctionOriginal: { flexDirection: "row", alignItems: "center", gap: 8 },
+  correctionX: { fontSize: 12, color: "#ff6b6b", fontWeight: "700" },
+  correctionOriginalText: { fontSize: 14, color: "#ff6b6b", fontStyle: "italic" },
+  correctionArrowRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 4 },
+  correctionArrow: { fontSize: 12, color: "#594139" },
+  correctionFixed: { flexDirection: "row", alignItems: "center", gap: 8 },
+  correctionCheck: { fontSize: 12, color: "#66d17a", fontWeight: "700" },
+  correctionFixedText: { fontSize: 14, color: "#66d17a", fontWeight: "600", fontStyle: "italic" },
+  correctionExplanation: { fontSize: 12, color: "#a88a80", lineHeight: 18, paddingTop: 2 },
+  patternRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  patternGoodDot: { fontSize: 13, color: "#66d17a", fontWeight: "700", marginTop: 1 },
+  patternGoodText: { flex: 1, fontSize: 13, color: "#66d17a", lineHeight: 19 },
+  patternImproveDot: { fontSize: 13, color: "#dcc841", fontWeight: "700", marginTop: 1 },
+  patternImproveText: { flex: 1, fontSize: 13, color: "#dcc841", lineHeight: 19 },
 });

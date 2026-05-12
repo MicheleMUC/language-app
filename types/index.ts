@@ -2,6 +2,7 @@ export interface VocabItem {
   italian: string;
   english: string;
   example?: string;
+  activelyUsed?: boolean;
 }
 
 export interface Scenario {
@@ -24,6 +25,20 @@ export interface ConversationTurn {
   timestamp: number;
 }
 
+export interface GrammarCorrection {
+  original: string;
+  corrected: string;
+  explanation: string;
+}
+
+export interface SessionFeedback {
+  praise: string;
+  tip: string;
+  corrections: GrammarCorrection[];
+  patternsGood: string[];
+  patternsToImprove: string[];
+}
+
 export interface ConversationSession {
   id: string;
   scenarioId: string;
@@ -32,6 +47,7 @@ export interface ConversationSession {
   startedAt: number;
   endedAt?: number;
   newVocabulary: VocabItem[];
+  feedback?: SessionFeedback;
 }
 
 export interface SidekickMessage {

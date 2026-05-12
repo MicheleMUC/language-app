@@ -1,7 +1,55 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import type { ConversationSession } from "@/types";
+import type { ConversationSession, SessionFeedback, GrammarCorrection } from "@/types";
+
+function CorrectionsSection({ feedback }: { feedback: SessionFeedback }) {
+  const hasCorrections = feedback.corrections.length > 0;
+  const hasPatterns = feedback.patternsGood.length > 0 || feedback.patternsToImprove.length > 0;
+  if (!hasCorrections && !hasPatterns) return null;
+
+  return (
+    <View style={styles.correctionsSection}>
+      <Text style={styles.sectionLabel}>ANALISI GRAMMATICALE</Text>
+
+      {hasCorrections && (
+        <View style={{ gap: 10, marginBottom: hasPatterns ? 14 : 0 }}>
+          {feedback.corrections.map((c: GrammarCorrection, i: number) => (
+            <View key={i} style={styles.correctionRow}>
+              <View style={styles.correctionLine}>
+                <Text style={styles.correctionX}>✗</Text>
+                <Text style={styles.correctionOriginalText}>"{c.original}"</Text>
+              </View>
+              <View style={styles.correctionLine}>
+                <Text style={styles.correctionArrow}>↓</Text>
+                <Text style={styles.correctionCheck}>✓</Text>
+                <Text style={styles.correctionFixedText}>"{c.corrected}"</Text>
+              </View>
+              <Text style={styles.correctionExplanation}>{c.explanation}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {hasPatterns && (
+        <View style={{ gap: 6 }}>
+          {feedback.patternsGood.map((p: string, i: number) => (
+            <View key={`g${i}`} style={styles.patternRow}>
+              <Text style={styles.patternGoodMark}>✓</Text>
+              <Text style={styles.patternGoodText}>{p}</Text>
+            </View>
+          ))}
+          {feedback.patternsToImprove.map((p: string, i: number) => (
+            <View key={`i${i}`} style={styles.patternRow}>
+              <Text style={styles.patternImproveMark}>→</Text>
+              <Text style={styles.patternImproveText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function SessionDetailScreen() {
   const { sessionData } = useLocalSearchParams<{ id: string; sessionData: string }>();
@@ -56,6 +104,9 @@ export default function SessionDetailScreen() {
               </View>
             );
           })}
+
+          {/* Grammar analysis */}
+          {session.feedback && <CorrectionsSection feedback={session.feedback} />}
 
           {/* Vocabulary section */}
           {session.newVocabulary.length > 0 && (
@@ -190,4 +241,39 @@ const styles = StyleSheet.create({
   },
   vocabItalian: { fontSize: 15, fontWeight: "700", color: "#e5e2e1" },
   vocabEnglish: { fontSize: 13, color: "#e1bfb4", marginTop: 2 },
+  correctionsSection: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#201f1f",
+    gap: 10,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#e1bfb4",
+    letterSpacing: 3,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  correctionRow: {
+    backgroundColor: "#201f1f",
+    borderRadius: 14,
+    padding: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#353534",
+  },
+  correctionLine: { flexDirection: "row", alignItems: "center", gap: 8 },
+  correctionX: { fontSize: 12, color: "#ff6b6b", fontWeight: "700" },
+  correctionOriginalText: { fontSize: 14, color: "#ff6b6b", fontStyle: "italic" },
+  correctionArrow: { fontSize: 12, color: "#594139" },
+  correctionCheck: { fontSize: 12, color: "#66d17a", fontWeight: "700" },
+  correctionFixedText: { fontSize: 14, color: "#66d17a", fontWeight: "600", fontStyle: "italic" },
+  correctionExplanation: { fontSize: 12, color: "#a88a80", lineHeight: 18 },
+  patternRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  patternGoodMark: { fontSize: 13, color: "#66d17a", fontWeight: "700", marginTop: 1 },
+  patternGoodText: { flex: 1, fontSize: 13, color: "#66d17a", lineHeight: 19 },
+  patternImproveMark: { fontSize: 13, color: "#dcc841", fontWeight: "700", marginTop: 1 },
+  patternImproveText: { flex: 1, fontSize: 13, color: "#dcc841", lineHeight: 19 },
 });

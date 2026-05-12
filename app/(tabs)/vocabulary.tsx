@@ -6,7 +6,7 @@ import { loadVocabulary } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { VocabItem } from "@/types";
 
-type VocabEntry = VocabItem & { firstSeenAt: string };
+type VocabEntry = VocabItem & { firstSeenAt: string; activelyUsed: boolean };
 
 export default function VocabularyScreen() {
   const { user } = useAuth();
@@ -32,7 +32,9 @@ export default function VocabularyScreen() {
           </View>
           {!loading && (
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{words.length}</Text>
+              <Text style={styles.countText}>
+                {words.filter((w) => w.activelyUsed).length} / {words.length}
+              </Text>
             </View>
           )}
         </View>
@@ -61,8 +63,8 @@ export default function VocabularyScreen() {
             ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             renderItem={({ item }) => (
               <View style={styles.wordCard}>
-                <View style={styles.wordIcon}>
-                  <Text style={{ fontSize: 18, color: "#d6baff" }}>🔤</Text>
+                <View style={[styles.wordIcon, item.activelyUsed ? styles.wordIconActive : styles.wordIconPassive]}>
+                  <Text style={{ fontSize: 18 }}>{item.activelyUsed ? "🗣️" : "👂"}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.italian}>{item.italian}</Text>
@@ -70,6 +72,11 @@ export default function VocabularyScreen() {
                   {!!item.example && (
                     <Text style={styles.example}>"{item.example}"</Text>
                   )}
+                  <View style={item.activelyUsed ? styles.activeBadge : styles.passiveBadge}>
+                    <Text style={item.activelyUsed ? styles.activeBadgeText : styles.passiveBadgeText}>
+                      {item.activelyUsed ? "attivo" : "passivo"}
+                    </Text>
+                  </View>
                 </View>
               </View>
             )}
@@ -129,10 +136,33 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(214,186,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
+  wordIconActive: { backgroundColor: "rgba(255,109,51,0.12)" },
+  wordIconPassive: { backgroundColor: "rgba(214,186,255,0.1)" },
+  activeBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,109,51,0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "rgba(255,109,51,0.3)",
+    marginTop: 6,
+  },
+  activeBadgeText: { fontSize: 11, fontWeight: "700", color: "#ff6d33" },
+  passiveBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(83,57,124,0.2)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "rgba(214,186,255,0.2)",
+    marginTop: 6,
+  },
+  passiveBadgeText: { fontSize: 11, fontWeight: "700", color: "#9d7ec5" },
   italian: { fontSize: 17, fontWeight: "700", color: "#e5e2e1", marginBottom: 2 },
   english: { fontSize: 14, color: "#e1bfb4", marginBottom: 4 },
   example: { fontSize: 13, color: "#a88a80", fontStyle: "italic", lineHeight: 18 },

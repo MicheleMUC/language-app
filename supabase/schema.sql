@@ -21,6 +21,7 @@ create table if not exists sessions (
   started_at bigint not null,
   ended_at bigint,
   new_vocabulary jsonb not null default '[]',
+  feedback jsonb,
   created_at timestamptz not null default now()
 );
 
@@ -46,6 +47,7 @@ create table if not exists user_vocabulary (
   italian text not null,
   english text not null,
   example text,
+  actively_used boolean not null default false,
   first_seen_at timestamptz not null default now(),
   constraint user_vocabulary_unique unique (user_id, italian)
 );

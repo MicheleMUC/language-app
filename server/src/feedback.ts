@@ -10,6 +10,26 @@ const ai = GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
   : new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
 
+const SYSTEM_PROMPT = `You are an expert Italian language coach analyzing a student's conversation practice session.
+
+Given the student's Italian utterances, return a JSON object with this exact structure:
+{
+  "praise": "<1 specific sentence praising a concrete word, phrase, or structure they used well>",
+  "tip": "<1 actionable improvement sentence tied to what they actually said>",
+  "corrections": [
+    { "original": "<the erroneous phrase or sentence>", "corrected": "<corrected version>", "explanation": "<brief English reason>" }
+  ],
+  "patternsGood": ["<grammar or vocab pattern they used correctly>"],
+  "patternsToImprove": ["<pattern they should practice>"]
+}
+
+Rules:
+- corrections: 0-5 items. Only include real grammatical or vocabulary errors. Skip minor accent or phrasing choices.
+- patternsGood: 1-2 items max. Only if clearly demonstrated.
+- patternsToImprove: 1-2 items max. Be specific (e.g. "passato prossimo with essere verbs" not "past tense").
+- All text under 25 words per item. Be warm and constructive.
+- Respond ONLY with valid JSON. No markdown, no code fences.`;
+
 feedbackRouter.post("/", async (req, res) => {
   const { turns, scenario, userLevel } = req.body as {
     turns: Array<{ role: string; italian: string }>;
@@ -21,40 +41,41 @@ feedbackRouter.post("/", async (req, res) => {
 
   const userTurns = turns
     .filter((t) => t.role === "user" && t.italian?.trim())
-    .map((t) => `- "${t.italian.trim()}"`)
+    .map((t, i) => `${i + 1}. "${t.italian.trim()}"`)
     .join("\n");
 
   if (!userTurns) {
     return res.json({
       praise: "Ottimo inizio!",
       tip: "Prova a usare più frasi complete la prossima volta.",
+      corrections: [],
+      patternsGood: [],
+      patternsToImprove: [],
     });
   }
 
-  const systemInstruction = `You are an expert Italian language coach giving feedback after a conversation practice session.
-The student is at level ${userLevel ?? "A2"}. They just practiced a ${scenario?.difficulty ?? "A2"} scenario with ${scenario?.characterName ?? "an Italian speaker"}.
+  const userContext = `Student level: ${userLevel ?? "A2"}. Scenario difficulty: ${scenario?.difficulty ?? "A2"} with ${scenario?.characterName ?? "an Italian speaker"}.
 
 Student's Italian utterances:
-${userTurns}
-
-Write exactly 2 sentences in English:
-1. Specific praise: mention a concrete word, phrase, or grammar structure they used correctly. Do not be generic.
-2. Actionable tip: one specific grammar or vocabulary improvement tied to what they actually said.
-
-Be warm and encouraging. Reference exact words or phrases they used. Keep each sentence under 25 words.`;
+${userTurns}`;
 
   try {
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      config: { systemInstruction },
-      contents: "Give feedback on this student's Italian practice session.",
+      config: { systemInstruction: SYSTEM_PROMPT },
+      contents: userContext,
     });
 
-    const text = result.text?.trim() ?? "";
-    const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const raw = result.text?.trim() ?? "{}";
+    const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(clean);
+
     res.json({
-      praise: sentences[0] ?? "Ottimo lavoro con la conversazione!",
-      tip: sentences[1] ?? "Continua a praticare ogni giorno.",
+      praise: parsed.praise ?? "Ottimo lavoro con la conversazione!",
+      tip: parsed.tip ?? "Continua a praticare ogni giorno.",
+      corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
+      patternsGood: Array.isArray(parsed.patternsGood) ? parsed.patternsGood : [],
+      patternsToImprove: Array.isArray(parsed.patternsToImprove) ? parsed.patternsToImprove : [],
     });
   } catch (e) {
     console.error("Feedback error:", e);

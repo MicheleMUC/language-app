@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Scenario, ConversationSession, VocabItem } from "@/types";
+import type { Scenario, ConversationSession, VocabItem, SessionFeedback } from "@/types";
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -47,16 +47,33 @@ export async function saveScenario(scenario: Scenario): Promise<string> {
 
 export async function saveSession(
   session: Omit<ConversationSession, "id">
+): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert({
+      scenario_id: session.scenarioId,
+      user_id: session.userId,
+      turns: session.turns,
+      started_at: session.startedAt,
+      ended_at: session.endedAt ?? null,
+      new_vocabulary: session.newVocabulary,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function updateSessionFeedback(
+  sessionId: string,
+  feedback: SessionFeedback
 ): Promise<void> {
   if (!supabase) return;
-  const { error } = await supabase.from("sessions").insert({
-    scenario_id: session.scenarioId,
-    user_id: session.userId,
-    turns: session.turns,
-    started_at: session.startedAt,
-    ended_at: session.endedAt ?? null,
-    new_vocabulary: session.newVocabulary,
-  });
+  const { error } = await supabase
+    .from("sessions")
+    .update({ feedback })
+    .eq("id", sessionId);
   if (error) throw error;
 }
 
@@ -80,6 +97,7 @@ export async function loadSessions(
     startedAt: row.started_at,
     endedAt: row.ended_at ?? undefined,
     newVocabulary: row.new_vocabulary,
+    feedback: row.feedback ?? undefined,
   }));
 }
 
@@ -137,6 +155,17 @@ export async function upsertVocabulary(userId: string, items: VocabItem[]): Prom
     { onConflict: "user_id,italian", ignoreDuplicates: true }
   );
   if (error) throw error;
+
+  const activeWords = items.filter((v) => v.activelyUsed).map((v) => v.italian);
+  if (activeWords.length > 0) {
+    const { error: updateError } = await supabase
+      .from("user_vocabulary")
+      .update({ actively_used: true })
+      .eq("user_id", userId)
+      .in("italian", activeWords)
+      .eq("actively_used", false);
+    if (updateError) throw updateError;
+  }
 }
 
 export async function loadVocabulary(
@@ -145,7 +174,7 @@ export async function loadVocabulary(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("user_vocabulary")
-    .select("italian, english, example, first_seen_at")
+    .select("italian, english, example, first_seen_at, actively_used")
     .eq("user_id", userId)
     .order("first_seen_at", { ascending: false })
     .limit(200);
@@ -155,5 +184,6 @@ export async function loadVocabulary(
     english: row.english,
     example: row.example ?? undefined,
     firstSeenAt: row.first_seen_at,
+    activelyUsed: row.actively_used ?? false,
   }));
 }

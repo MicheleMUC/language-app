@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import type { Scenario, ConversationTurn } from "@/types";
+import type { Scenario, ConversationTurn, SessionFeedback } from "@/types";
 
 function getServerBase(): string {
   if (process.env.EXPO_PUBLIC_SERVER_URL) return process.env.EXPO_PUBLIC_SERVER_URL;
@@ -42,7 +42,7 @@ export async function requestFeedback(
   turns: ConversationTurn[],
   scenario: { difficulty: string; characterName: string },
   userLevel: string
-): Promise<{ praise: string; tip: string }> {
+): Promise<SessionFeedback> {
   const base = getServerBase();
   const res = await fetch(`${base}/feedback`, {
     method: "POST",
