@@ -168,9 +168,70 @@ export async function upsertVocabulary(userId: string, items: VocabItem[]): Prom
   }
 }
 
+// ── Pre-generated scenarios ───────────────────────────────────────────────────
+
+export async function loadPregenScenarios(
+  userId: string
+): Promise<Array<{ intent: string; data: object }>> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("pregenerated_scenarios")
+    .select("intent, data")
+    .eq("user_id", userId);
+  if (error) return [];
+  return (data ?? []).map((row) => ({ intent: row.intent as string, data: row.data as object }));
+}
+
+export async function upsertPregenScenario(
+  userId: string,
+  intent: string,
+  scenarioData: object
+): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from("pregenerated_scenarios").upsert(
+    { user_id: userId, intent, data: scenarioData, generated_at: new Date().toISOString() },
+    { onConflict: "user_id,intent" }
+  );
+  if (error) throw error;
+}
+
+export async function deletePregenScenario(userId: string, intent: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from("pregenerated_scenarios").delete().eq("user_id", userId).eq("intent", intent);
+}
+
+// ── Cross-session memory ──────────────────────────────────────────────────────
+
+export async function loadRecentVocab(userId: string, limit = 10): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("user_vocabulary")
+    .select("italian")
+    .eq("user_id", userId)
+    .order("first_seen_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []).map((row) => row.italian as string);
+}
+
+export async function loadRecentFeedback(userId: string, limit = 3): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("feedback")
+    .eq("user_id", userId)
+    .not("feedback", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? [])
+    .map((row) => (row.feedback as { tip?: string } | null)?.tip)
+    .filter((t): t is string => !!t);
+}
+
 export async function loadVocabulary(
   userId: string
-): Promise<Array<VocabItem & { firstSeenAt: string }>> {
+): Promise<Array<VocabItem & { firstSeenAt: string; activelyUsed: boolean }>> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("user_vocabulary")

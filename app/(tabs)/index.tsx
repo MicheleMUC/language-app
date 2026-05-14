@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { ScenarioCard } from "@/components/ScenarioCard";
 import { FloatingNav } from "@/components/FloatingNav";
 import { generateScenario } from "@/lib/api";
-import { saveScenario } from "@/lib/supabase";
+import { saveScenario, loadRecentVocab, loadRecentFeedback } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { useStats } from "@/hooks/useStats";
 import { usePreferences } from "@/hooks/usePreferences";
@@ -61,13 +61,21 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { streak, todayMinutes, loading: statsLoading } = useStats(user?.id);
   const { level } = usePreferences(user?.id);
+  const memoryRef = useRef<{ recentVocab: string[]; lastTip?: string }>({ recentVocab: [] });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    Promise.all([loadRecentVocab(user.id), loadRecentFeedback(user.id)]).then(
+      ([vocab, tips]) => { memoryRef.current = { recentVocab: vocab, lastTip: tips[0] }; }
+    ).catch(() => {});
+  }, [user?.id]);
 
   const handleSubmit = async (customIntent?: string) => {
     const trimmed = (customIntent ?? intent).trim();
     if (!trimmed || loading) return;
     setLoading(true);
     try {
-      const generated = await generateScenario(trimmed, user?.id ?? "", level);
+      const generated = await generateScenario(trimmed, user?.id ?? "", level, memoryRef.current);
       const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {

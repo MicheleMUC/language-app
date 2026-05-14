@@ -10,13 +10,14 @@ function getServerBase(): string {
 export async function generateScenario(
   intent: string,
   userId: string,
-  difficulty?: string
+  difficulty?: string,
+  memory?: { recentVocab?: string[]; lastTip?: string }
 ): Promise<Scenario> {
   const base = getServerBase();
   const res = await fetch(`${base}/scenario`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ intent, userId, difficulty }),
+    body: JSON.stringify({ intent, userId, difficulty, ...memory }),
   });
   if (!res.ok) throw new Error(`Scenario generation failed: ${res.status}`);
   return res.json();

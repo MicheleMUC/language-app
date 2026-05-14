@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,14 @@ import { useRouter } from "expo-router";
 import { ScenarioCard } from "@/components/ScenarioCard";
 import { FloatingNav } from "@/components/FloatingNav";
 import { generateScenario } from "@/lib/api";
-import { saveScenario } from "@/lib/supabase";
+import {
+  saveScenario,
+  loadRecentVocab,
+  loadRecentFeedback,
+  loadPregenScenarios,
+  upsertPregenScenario,
+  deletePregenScenario,
+} from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { usePreferences } from "@/hooks/usePreferences";
 import type { Scenario } from "@/types";
@@ -57,14 +64,88 @@ export default function ScenariosScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingIntent, setLoadingIntent] = useState<string | null>(null);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [pregen, setPregen] = useState<Map<string, Scenario>>(new Map());
+
   const { user } = useAuth();
   const { level } = usePreferences(user?.id);
+  const levelRef = useRef(level);
+  const memoryRef = useRef<{ recentVocab: string[]; lastTip?: string }>({ recentVocab: [] });
 
+  useEffect(() => { levelRef.current = level; }, [level]);
+
+  // Loading message rotation
   useEffect(() => {
     if (!loading) { setLoadingMsgIdx(0); return; }
     const id = setInterval(() => setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length), 1500);
     return () => clearInterval(id);
   }, [loading]);
+
+  // Phase 1 + Phase 2: load DB cache, then fill empty slots in background
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+
+    (async () => {
+      // Load memory context and existing pre-generated scenarios in parallel
+      const [vocab, tips, rows] = await Promise.all([
+        loadRecentVocab(user.id),
+        loadRecentFeedback(user.id),
+        loadPregenScenarios(user.id),
+      ]);
+      if (cancelled) return;
+
+      memoryRef.current = { recentVocab: vocab, lastTip: tips[0] };
+
+      // Phase 1: populate pregen map from DB (instant)
+      const initialPregen = new Map<string, Scenario>();
+      for (const row of rows) {
+        initialPregen.set(row.intent, {
+          ...(row.data as Omit<Scenario, "id" | "intent" | "userId" | "createdAt">),
+          id: `pregen_${row.intent}`,
+          intent: row.intent,
+          userId: user.id,
+          createdAt: Date.now(),
+        });
+      }
+      setPregen(initialPregen);
+
+      // Phase 2: generate missing slots, 3 at a time (background — no loading UI)
+      const missing = ALL_SCENARIOS.map((s) => s.intent).filter((i) => !initialPregen.has(i));
+
+      for (let i = 0; i < missing.length; i += 3) {
+        if (cancelled) break;
+        const batch = missing.slice(i, i + 3);
+        await Promise.all(
+          batch.map(async (intent) => {
+            if (cancelled) return;
+            try {
+              const generated = await generateScenario(
+                intent,
+                user.id,
+                levelRef.current,
+                memoryRef.current
+              );
+              if (cancelled) return;
+              // Extract only the scenario content fields (not metadata) for DB storage
+              const { id: _id, intent: _intent, userId: _userId, createdAt: _createdAt, ...scenarioData } = generated;
+              await upsertPregenScenario(user.id, intent, scenarioData);
+              if (cancelled) return;
+              setPregen((prev) => {
+                const next = new Map(prev);
+                next.set(intent, { ...generated, id: `pregen_${intent}`, intent, userId: user.id });
+                return next;
+              });
+            } catch {
+              // silent — card falls back to live generation on tap
+            }
+          })
+        );
+      }
+    })().catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -72,10 +153,22 @@ export default function ScenariosScreen() {
 
   const handleSelect = async (intent: string) => {
     if (loading) return;
+
+    // Fast path: use pre-generated scenario, free the slot for next regen
+    const pregenScenario = pregen.get(intent);
+    if (pregenScenario) {
+      setPregen((prev) => { const next = new Map(prev); next.delete(intent); return next; });
+      deletePregenScenario(user?.id ?? "", intent).catch(() => {});
+      const id = await saveScenario(pregenScenario).catch(() => `local_${Date.now()}`);
+      setScenario({ ...pregenScenario, id });
+      return;
+    }
+
+    // Slow path: live generation
     setLoading(true);
     setLoadingIntent(intent);
     try {
-      const generated = await generateScenario(intent, user?.id ?? "", level);
+      const generated = await generateScenario(intent, user?.id ?? "", levelRef.current, memoryRef.current);
       const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {
@@ -141,6 +234,7 @@ export default function ScenariosScreen() {
           <View style={styles.grid}>
             {filtered.map((s) => {
               const isLoading = loadingIntent === s.intent;
+              const isReady = pregen.has(s.intent);
               return (
                 <TouchableOpacity
                   key={s.intent}
@@ -149,8 +243,11 @@ export default function ScenariosScreen() {
                   style={[styles.card, { backgroundColor: s.bg }]}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.diffBadge}>
-                    <Text style={styles.diffText}>{s.difficulty}</Text>
+                  <View style={styles.cardTop}>
+                    <View style={styles.diffBadge}>
+                      <Text style={styles.diffText}>{s.difficulty}</Text>
+                    </View>
+                    {isReady && <View style={styles.readyDot} />}
                   </View>
                   {isLoading ? (
                     <View style={{ marginVertical: 16, alignItems: "center", gap: 6 }}>
@@ -225,14 +322,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     overflow: "hidden",
   },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
   diffBadge: {
     backgroundColor: "rgba(0,0,0,0.2)",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    alignSelf: "flex-start",
   },
   diffText: { fontSize: 11, fontWeight: "800", color: "rgba(255,255,255,0.85)", letterSpacing: 1 },
+  readyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4caf50",
+    opacity: 0.75,
+  },
   cardEmoji: { fontSize: 44, alignSelf: "center", flex: 1, textAlignVertical: "center", paddingVertical: 8 },
   cardLabel: { fontSize: 16, fontWeight: "700", lineHeight: 22, letterSpacing: -0.3 },
   loadingMsg: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, opacity: 0.85, textAlign: "center" },

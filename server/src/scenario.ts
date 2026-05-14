@@ -42,14 +42,26 @@ const scenarioCache = new Map<string, object>();
 // In-flight promise map to collapse concurrent identical requests
 const generating = new Map<string, Promise<object>>();
 
-async function _doGenerate(intent: string, difficulty?: string): Promise<object> {
+async function _doGenerate(
+  intent: string,
+  difficulty?: string,
+  recentVocab?: string[],
+  lastTip?: string
+): Promise<object> {
   console.log(`[cache] generating intent: ${intent}${difficulty ? ` at ${difficulty}` : ""}`);
   const difficultyInstruction = difficulty
     ? `\nYou MUST set the difficulty field to "${difficulty}". Do not choose a different level.`
     : "";
+  let memoryInstruction = "";
+  if (recentVocab && recentVocab.length > 0) {
+    memoryInstruction += `\n\nThe learner has recently encountered these Italian words — weave them into the scenario vocabulary list or the character's likely phrases where natural: ${recentVocab.join(", ")}.`;
+  }
+  if (lastTip) {
+    memoryInstruction += `\n\nThe learner's coach last noted: "${lastTip}". Design the scenario so this grammar point comes up naturally in conversation.`;
+  }
   const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    config: { systemInstruction: SYSTEM_PROMPT + difficultyInstruction },
+    model: "gemini-3-flash-preview",
+    config: { systemInstruction: SYSTEM_PROMPT + difficultyInstruction + memoryInstruction },
     contents: intent,
   });
   const raw = result.text ?? "{}";
@@ -87,19 +99,24 @@ async function warmCache() {
 warmCache().catch(console.error);
 
 scenarioRouter.post("/", async (req, res) => {
-  const { intent, userId, difficulty } = req.body as {
+  const { intent, userId, difficulty, recentVocab, lastTip } = req.body as {
     intent: string;
     userId: string;
     difficulty?: string;
+    recentVocab?: string[];
+    lastTip?: string;
   };
   if (!intent) return res.status(400).json({ error: "intent required" });
 
   try {
-    const data = await generateAndCache(intent, difficulty) as Record<string, unknown>;
+    const hasMemory = (recentVocab && recentVocab.length > 0) || !!lastTip;
+    // Bypass shared cache for personalized requests so user-specific context is always fresh
+    const data = hasMemory
+      ? await _doGenerate(intent, difficulty, recentVocab, lastTip) as Record<string, unknown>
+      : await generateAndCache(intent, difficulty) as Record<string, unknown>;
 
     res.json({
       ...data,
-      // If a difficulty was requested, enforce it in the response regardless of what the AI returned
       ...(difficulty ? { difficulty } : {}),
       id: `scenario_${Date.now()}`,
       intent,

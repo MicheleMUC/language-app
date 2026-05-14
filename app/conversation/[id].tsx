@@ -140,6 +140,39 @@ function CorrectionsCard({ feedback }: { feedback: SessionFeedback }) {
   );
 }
 
+function TranscriptSection({ turns }: { turns: ConversationTurn[] }) {
+  if (turns.length === 0) return null;
+  return (
+    <View style={{ marginBottom: 32 }}>
+      <Text style={styles.reviewSectionLabel}>TRASCRIZIONE</Text>
+      <View style={{ gap: 12 }}>
+        {turns.map((turn, i) => {
+          const isUser = turn.role === "user";
+          return (
+            <View key={i} style={[styles.transcriptRow, isUser && styles.transcriptRowUser]}>
+              {!isUser && (
+                <View style={styles.transcriptAvatar}>
+                  <Text style={{ fontSize: 14 }}>🗣️</Text>
+                </View>
+              )}
+              <View style={[styles.transcriptBubble, isUser ? styles.transcriptBubbleUser : styles.transcriptBubbleAI]}>
+                <Text style={[styles.transcriptItalian, isUser && styles.transcriptItalianUser]}>
+                  {turn.italian}
+                </Text>
+                {turn.english ? (
+                  <Text style={[styles.transcriptEnglish, isUser && styles.transcriptEnglishUser]}>
+                    {turn.english}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function SessionReview({
   turns,
   newVocabulary,
@@ -209,6 +242,9 @@ function SessionReview({
             </View>
           </View>
         )}
+
+        {/* Full conversation transcript */}
+        <TranscriptSection turns={turns} />
 
         <TouchableOpacity onPress={onRepeat} style={styles.repeatBtn} activeOpacity={0.85}>
           <Text style={styles.repeatBtnText}>↺  Ripeti Scenario</Text>
@@ -621,6 +657,17 @@ const styles = StyleSheet.create({
   repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#5f1b00" },
   homeBtn: { backgroundColor: "#353534", borderRadius: 50, paddingVertical: 20, alignItems: "center", borderWidth: 1, borderColor: "#594139" },
   homeBtnText: { fontSize: 16, fontWeight: "700", color: "#e5e2e1" },
+  // Transcript
+  transcriptRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 4 },
+  transcriptRowUser: { flexDirection: "row-reverse" },
+  transcriptAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#201f1f", borderWidth: 1, borderColor: "#353534", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  transcriptBubble: { maxWidth: "78%", borderRadius: 18, padding: 12, gap: 4 },
+  transcriptBubbleAI: { backgroundColor: "#201f1f", borderWidth: 1, borderColor: "#353534", borderBottomLeftRadius: 4 },
+  transcriptBubbleUser: { backgroundColor: "#ff6d33", borderBottomRightRadius: 4 },
+  transcriptItalian: { fontSize: 14, fontWeight: "600", color: "#e5e2e1", lineHeight: 20 },
+  transcriptItalianUser: { color: "#5f1b00" },
+  transcriptEnglish: { fontSize: 11, color: "#e1bfb4", lineHeight: 16, fontStyle: "italic", opacity: 0.75 },
+  transcriptEnglishUser: { color: "rgba(95,27,0,0.7)" },
   // Feedback card
   feedbackCard: {
     backgroundColor: "#1a1230",

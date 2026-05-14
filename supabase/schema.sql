@@ -54,6 +54,18 @@ create table if not exists user_vocabulary (
 
 create index if not exists user_vocab_user on user_vocabulary (user_id, first_seen_at desc);
 
+-- pregenerated_scenarios: one pre-built scenario per user per intent, deleted when played
+create table if not exists pregenerated_scenarios (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  intent text not null,
+  data jsonb not null,
+  generated_at timestamptz not null default now(),
+  constraint pregenerated_scenarios_unique unique (user_id, intent)
+);
+
+create index if not exists pregen_user on pregenerated_scenarios (user_id);
+
 -- Row Level Security (apply after enabling auth)
 -- alter table sessions enable row level security;
 -- create policy "users own sessions" on sessions for all
