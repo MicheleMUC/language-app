@@ -13,6 +13,7 @@ export function useConversation(scenario: Scenario) {
   const [lastUserTranscript, setLastUserTranscript] = useState("");
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
+  const startedRef = useRef(false); // guard against Strict Mode double-invocation
   const player = useAudioPlayer(null);
   const playerStatus = useAudioPlayerStatus(player);
 
@@ -26,11 +27,13 @@ export function useConversation(scenario: Scenario) {
     if (isDrainingRef.current) return;
     const next = audioQueueRef.current.shift();
     if (!next) return;
+    console.log(`[conv] drainQueue: playing chunk, queue remaining=${audioQueueRef.current.length}`);
     isDrainingRef.current = true;
     try {
       player.replace(next);
       player.play();
-    } catch {
+    } catch (e) {
+      console.error("[conv] drainQueue player error:", e);
       isDrainingRef.current = false;
       drainQueueRef.current();
     }
@@ -52,12 +55,18 @@ export function useConversation(scenario: Scenario) {
 
   const handleMessage = useCallback(
     (msg: WsServerMessage) => {
+      console.log(`[conv] ws msg type=${msg.type}`, msg.type === "audio" ? `(${Math.round((msg.data?.length ?? 0) * 0.75)} bytes)` : msg.type === "transcript" ? `role=${msg.role} text="${msg.italian?.slice(0, 40)}"` : "");
       switch (msg.type) {
         case "ready":
-          setStatus("active");
+          // Only advance from "connecting" — never overwrite "thinking" or later states
+          // from a stale/duplicate socket that connected late.
+          setStatus((prev) => (prev === "connecting" ? "active" : prev));
           break;
         case "audio":
-          setStatus((prev) => prev === "thinking" ? "active" : prev);
+          setStatus((prev) => {
+            if (prev === "thinking") console.log("[conv] status: thinking → active (audio)");
+            return prev === "thinking" ? "active" : prev;
+          });
           playAudio(msg.data, msg.mimeType ?? "audio/wav");
           break;
         case "transcript":
@@ -65,8 +74,10 @@ export function useConversation(scenario: Scenario) {
             setLastUserTranscript(msg.italian);
           } else {
             setPartialTranscript("");
-            // Fallback: also transition if audio message didn't arrive first
-            setStatus((prev) => prev === "thinking" ? "active" : prev);
+            setStatus((prev) => {
+              if (prev === "thinking") console.log("[conv] status: thinking → active (transcript)");
+              return prev === "thinking" ? "active" : prev;
+            });
           }
           setTurns((prev) => [
             ...prev,
@@ -87,13 +98,21 @@ export function useConversation(scenario: Scenario) {
           setPartialTranscript("");
           break;
         case "error":
-          // Server-side error (e.g. Gemini session closed) — end the session
+          console.error("[conv] server error:", (msg as { type: "error"; message?: string }).message);
           setStatus("ended");
           break;
       }
     },
     [playAudio, player]
   );
+
+  // Close socket on unmount so Strict Mode's unmount/remount doesn't leave orphan connections
+  useEffect(() => {
+    return () => {
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
+  }, []);
 
   const { start: startCapture, stop: stopCapture } = useAudioCapture(
     useCallback((base64: string, mimeType: string) => {
@@ -102,10 +121,17 @@ export function useConversation(scenario: Scenario) {
   );
 
   const start = useCallback(async () => {
+    if (startedRef.current) {
+      console.warn("[conv] start() called again — ignoring duplicate (Strict Mode?)");
+      return;
+    }
+    startedRef.current = true;
+    // Close any stale socket from a previous attempt
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+    }
     setStatus("connecting");
-    // Allow simultaneous recording + playback. On iOS this switches the
-    // AVAudioSession to PlayAndRecord — without it the recorder is interrupted
-    // the moment the model's audio starts playing.
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true }).catch(() => {});
     const socket = new ConversationSocket(handleMessage, () => setStatus("ended"));
     socketRef.current = socket;
@@ -123,6 +149,7 @@ export function useConversation(scenario: Scenario) {
 
   const stopTalking = useCallback(async () => {
     await stopCapture();
+    console.log("[conv] stopTalking → sending talk_end, status → thinking");
     socketRef.current?.send({ type: "talk_end" });
     setStatus("thinking");
   }, [stopCapture]);

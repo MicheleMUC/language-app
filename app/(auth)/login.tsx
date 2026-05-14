@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginScreen() {
@@ -19,8 +19,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { user, signIn } = useAuth();
   const router = useRouter();
+
+  if (user) return <Redirect href="/(tabs)" />;
 
   const handleLogin = async () => {
     if (!email.trim() || !password) return;

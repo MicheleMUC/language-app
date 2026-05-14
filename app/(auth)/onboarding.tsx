@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { savePreferences } from "@/lib/supabase";
 
@@ -46,6 +46,8 @@ export default function OnboardingScreen() {
     }
     router.replace("/(tabs)");
   };
+
+  if (user) return <Redirect href="/(tabs)" />;
 
   return (
     <View style={styles.root}>

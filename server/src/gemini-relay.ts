@@ -88,6 +88,10 @@ export function handleConversationWs(ws: WebSocket) {
   }
 
   function handleLiveMessage(message: LiveServerMessage) {
+    const sc = message.serverContent;
+    const keys = Object.keys(message).join(",");
+    console.log(`[relay] Gemini msg keys=${keys} turnComplete=${sc?.turnComplete ?? false} audioParts=${(sc?.modelTurn?.parts ?? []).filter(p => p.inlineData).length} hasOutTx=${!!(sc?.outputTranscription && "text" in sc.outputTranscription)} hasInTx=${!!(sc?.inputTranscription && "text" in sc.inputTranscription)}`);
+
     const parts = message.serverContent?.modelTurn?.parts ?? [];
     for (const part of parts) {
       if (part.inlineData?.data) {
@@ -99,16 +103,17 @@ export function handleConversationWs(ws: WebSocket) {
     const outTx = message.serverContent?.outputTranscription;
     if (outTx && "text" in outTx && typeof outTx.text === "string" && outTx.text) {
       txBuffer += outTx.text;
-      // Stream each fragment to the client immediately for word-by-word display
       send({ type: "transcript_partial", italian: txBuffer.trim() });
     }
 
     const inTx = message.serverContent?.inputTranscription;
     if (inTx && "text" in inTx && typeof inTx.text === "string" && inTx.text.trim()) {
+      console.log(`[relay] → user transcript: "${inTx.text.trim()}"`);
       send({ type: "transcript", role: "user", italian: inTx.text.trim(), text: "" });
     }
 
     if (message.serverContent?.turnComplete) {
+      console.log(`[relay] turnComplete received — flushing (audioChunks=${audioChunks.length} txBuffer="${txBuffer.trim().slice(0, 40)}")`);
       flushTurn();
     }
   }
@@ -207,12 +212,13 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
       }
 
       case "talk_start": {
-        if (!session) return;
+        if (!session) { console.warn("[relay] talk_start: no session"); return; }
         try {
+          console.log("[relay] talk_start → activityStart + interrupt");
           stopFlushInterval();
-          audioChunks.length = 0; // discard any buffered AI audio from previous turn
+          audioChunks.length = 0;
           session.sendRealtimeInput({ activityStart: {} });
-          send({ type: "interrupt" }); // tell client to stop current playback
+          send({ type: "interrupt" });
         } catch (e) {
           console.error("talk_start error:", e);
         }
@@ -232,17 +238,15 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
       }
 
       case "talk_end": {
-        if (!session) return;
+        if (!session) { console.warn("[relay] talk_end: no session"); return; }
         try {
+          console.log("[relay] talk_end → activityEnd + sendClientContent(turnComplete)");
           session.sendRealtimeInput({ activityEnd: {} });
-          // activityEnd alone doesn't trigger generation on this model;
-          // sendClientContent with turnComplete is the explicit trigger.
           session.sendClientContent({ turns: [], turnComplete: true });
-          // Safety net: if Gemini doesn't respond within 20s, notify the client
           if (turnTimeout) clearTimeout(turnTimeout);
           turnTimeout = setTimeout(() => {
             turnTimeout = null;
-            console.error("Gemini turn timeout — no response within 20s");
+            console.error("[relay] TIMEOUT — no Gemini response in 20s");
             send({ type: "error", message: "No response from Gemini — please try again" });
           }, 20_000);
         } catch (e) {
