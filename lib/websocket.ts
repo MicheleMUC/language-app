@@ -41,10 +41,6 @@ export class ConversationSocket {
     }
   }
 
-  sendAudio(base64: string, mimeType?: string) {
-    this.send({ type: "audio", data: base64, mimeType });
-  }
-
   close() {
     this.ws?.close();
     this.ws = null;

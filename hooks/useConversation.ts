@@ -114,11 +114,7 @@ export function useConversation(scenario: Scenario) {
     };
   }, []);
 
-  const { start: startCapture, stop: stopCapture } = useAudioCapture(
-    useCallback((base64: string, mimeType: string) => {
-      socketRef.current?.sendAudio(base64, mimeType);
-    }, [])
-  );
+  const { start: startCapture, stop: stopCapture } = useAudioCapture();
 
   const start = useCallback(async () => {
     if (startedRef.current) {
@@ -141,17 +137,30 @@ export function useConversation(scenario: Scenario) {
 
   const startTalking = useCallback(async () => {
     if (!socketRef.current) return;
-    socketRef.current.send({ type: "talk_start" });
-    setStatus("talking");
-    setLastUserTranscript(""); // clear previous "Ho sentito" while speaking
-    await startCapture();
+    try {
+      await startCapture();
+      socketRef.current?.send({ type: "talk_start" });
+      setStatus("talking");
+      setLastUserTranscript(""); // clear previous "Ho sentito" while speaking
+    } catch (e) {
+      console.error("[conv] startTalking capture error:", e);
+      setStatus("active");
+    }
   }, [startCapture]);
 
   const stopTalking = useCallback(async () => {
-    await stopCapture();
-    console.log("[conv] stopTalking → sending talk_end, status → thinking");
-    socketRef.current?.send({ type: "talk_end" });
     setStatus("thinking");
+    const audio = await stopCapture();
+
+    if (!audio) {
+      console.warn("[conv] stopTalking → no audio captured, cancelling turn");
+      socketRef.current?.send({ type: "talk_cancel" });
+      setStatus("active");
+      return;
+    }
+
+    console.log(`[conv] stopTalking → sending talk_end (${Math.round(audio.data.length * 0.75)} bytes), status → thinking`);
+    socketRef.current?.send({ type: "talk_end", audio });
   }, [stopCapture]);
 
   const end = useCallback(async () => {

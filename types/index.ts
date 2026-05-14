@@ -56,12 +56,17 @@ export interface SidekickMessage {
   timestamp: number;
 }
 
+export interface CapturedAudio {
+  data: string;
+  mimeType: string;
+}
+
 // WebSocket message types between app and Cloud Run relay
 export type WsClientMessage =
   | { type: "start"; scenarioId: string; scenario: Scenario }
   | { type: "talk_start" }
-  | { type: "audio"; data: string; mimeType?: string } // mimeType varies by platform
-  | { type: "talk_end" }
+  | { type: "talk_end"; audio: CapturedAudio }
+  | { type: "talk_cancel" }
   | { type: "end" };
 
 export type WsServerMessage =

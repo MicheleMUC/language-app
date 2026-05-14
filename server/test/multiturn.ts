@@ -22,24 +22,34 @@ const TEST_SCENARIO = {
   userId: "test",
 };
 
-// Generate N seconds of 16kHz mono sine-wave PCM (440 Hz) as base64 chunks
-function makeSineChunks(seconds: number, chunkMs = 100): string[] {
+// Generate a WAV file containing N seconds of 16kHz mono sine-wave PCM (440 Hz).
+function makeSineWav(seconds: number): string {
   const SAMPLE_RATE = 16000;
   const FREQ = 440;
-  const samplesPerChunk = Math.floor((SAMPLE_RATE * chunkMs) / 1000);
-  const totalChunks = Math.floor((seconds * 1000) / chunkMs);
-  const chunks: string[] = [];
-  let t = 0;
-  for (let c = 0; c < totalChunks; c++) {
-    const buf = Buffer.alloc(samplesPerChunk * 2);
-    for (let i = 0; i < samplesPerChunk; i++) {
-      const sample = Math.round(Math.sin((2 * Math.PI * FREQ * t) / SAMPLE_RATE) * 8000);
-      buf.writeInt16LE(sample, i * 2);
-      t++;
-    }
-    chunks.push(buf.toString("base64"));
+  const samples = SAMPLE_RATE * seconds;
+  const pcm = Buffer.alloc(samples * 2);
+
+  for (let i = 0; i < samples; i++) {
+    const sample = Math.round(Math.sin((2 * Math.PI * FREQ * i) / SAMPLE_RATE) * 8000);
+    pcm.writeInt16LE(sample, i * 2);
   }
-  return chunks;
+
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(36 + pcm.byteLength, 4);
+  header.write("WAVE", 8, "ascii");
+  header.write("fmt ", 12, "ascii");
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(SAMPLE_RATE, 24);
+  header.writeUInt32LE(SAMPLE_RATE * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36, "ascii");
+  header.writeUInt32LE(pcm.byteLength, 40);
+
+  return Buffer.concat([header, pcm]).toString("base64");
 }
 
 function sleep(ms: number) {
@@ -83,17 +93,10 @@ async function runTurn(ws: WebSocket, label: string): Promise<void> {
     console.log(`  (no interrupt echo — model may not have been speaking)`);
   });
 
-  // Stream sine-wave audio
-  const chunks = makeSineChunks(TURN_AUDIO_SECONDS);
-  console.log(`[${label}] Sending ${chunks.length} audio chunks...`);
-  for (const data of chunks) {
-    send(ws, { type: "audio", data });
-    await sleep(100);
-  }
-
-  // Release PTT
+  // Release PTT with one finalized turn recording.
+  const data = makeSineWav(TURN_AUDIO_SECONDS);
   console.log(`[${label}] Releasing PTT...`);
-  send(ws, { type: "talk_end" });
+  send(ws, { type: "talk_end", audio: { data, mimeType: "audio/wav" } });
 
   // Wait for model audio response
   console.log(`[${label}] Waiting for model response...`);

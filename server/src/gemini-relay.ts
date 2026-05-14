@@ -1,16 +1,64 @@
 import type { WebSocket } from "ws";
+import { spawn } from "child_process";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+
+type CapturedAudio = { data: string; mimeType: string };
 
 type ClientMsg =
   | { type: "start"; scenarioId: string; scenario: Record<string, unknown> }
   | { type: "talk_start" }
-  | { type: "audio"; data: string; mimeType?: string }
-  | { type: "talk_end" }
+  | { type: "talk_end"; audio: CapturedAudio }
+  | { type: "talk_cancel" }
   | { type: "end" };
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
 const LIVE_MODEL = "gemini-3.1-flash-live-preview";
+const PCM_MIME_TYPE = "audio/pcm;rate=16000";
+const PCM_CHUNK_BYTES = 16000 * 2 / 10; // 100ms of 16-bit mono PCM.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ffmpegPath = require("ffmpeg-static") as string | null;
+
+function transcodeToPcm(audio: CapturedAudio): Promise<Buffer> {
+  if (audio.mimeType.startsWith("audio/pcm")) {
+    return Promise.resolve(Buffer.from(audio.data, "base64"));
+  }
+
+  if (!ffmpegPath) {
+    return Promise.reject(new Error("ffmpeg-static did not provide a binary path"));
+  }
+
+  const input = Buffer.from(audio.data, "base64");
+  return new Promise((resolve, reject) => {
+    const child = spawn(ffmpegPath, [
+      "-hide_banner",
+      "-loglevel", "error",
+      "-i", "pipe:0",
+      "-f", "s16le",
+      "-acodec", "pcm_s16le",
+      "-ac", "1",
+      "-ar", "16000",
+      "pipe:1",
+    ]);
+
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+
+    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(Buffer.concat(stdout));
+        return;
+      }
+
+      reject(new Error(`ffmpeg exited ${code}: ${Buffer.concat(stderr).toString("utf8").trim()}`));
+    });
+
+    child.stdin.end(input);
+  });
+}
 
 export function handleConversationWs(ws: WebSocket) {
   const ai = GEMINI_API_KEY
@@ -66,6 +114,24 @@ export function handleConversationWs(ws: WebSocket) {
     if (flushInterval) {
       clearInterval(flushInterval);
       flushInterval = null;
+    }
+  }
+
+  async function sendCapturedAudio(audio: CapturedAudio) {
+    const inputBytes = Math.round(audio.data.length * 0.75);
+    console.log(`[relay] transcoding user audio (${inputBytes} bytes, ${audio.mimeType})`);
+    const pcm = await transcodeToPcm(audio);
+    if (pcm.byteLength === 0) {
+      throw new Error("Transcoded audio was empty");
+    }
+
+    console.log(`[relay] sending ${pcm.byteLength} PCM bytes to Gemini`);
+
+    for (let offset = 0; offset < pcm.byteLength; offset += PCM_CHUNK_BYTES) {
+      const chunk = pcm.subarray(offset, offset + PCM_CHUNK_BYTES);
+      session?.sendRealtimeInput({
+        audio: { data: chunk.toString("base64"), mimeType: PCM_MIME_TYPE },
+      });
     }
   }
 
@@ -172,7 +238,7 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
               inputAudioTranscription: {},
               outputAudioTranscription: {},
               realtimeInputConfig: {
-                // PTT mode: never auto-respond — only fire when we send turnComplete
+                // PTT mode: turn boundaries are explicit activityStart/activityEnd messages.
                 automaticActivityDetection: { disabled: true },
               },
               speechConfig: {
@@ -225,24 +291,12 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
         break;
       }
 
-      case "audio": {
-        if (!session) return;
-        try {
-          session.sendRealtimeInput({
-            audio: { data: msg.data, mimeType: msg.mimeType ?? "audio/pcm;rate=16000" },
-          });
-        } catch (e) {
-          console.error("Audio relay error:", e);
-        }
-        break;
-      }
-
       case "talk_end": {
         if (!session) { console.warn("[relay] talk_end: no session"); return; }
         try {
-          console.log("[relay] talk_end → activityEnd + sendClientContent(turnComplete)");
+          console.log("[relay] talk_end → audio + activityEnd");
+          await sendCapturedAudio(msg.audio);
           session.sendRealtimeInput({ activityEnd: {} });
-          session.sendClientContent({ turns: [], turnComplete: true });
           if (turnTimeout) clearTimeout(turnTimeout);
           turnTimeout = setTimeout(() => {
             turnTimeout = null;
@@ -251,6 +305,21 @@ Begin by greeting the learner warmly and setting the scene in one sentence.`;
           }, 20_000);
         } catch (e) {
           console.error("talk_end error:", e);
+          try {
+            session.sendRealtimeInput({ activityEnd: {} });
+          } catch { /* ignore */ }
+          send({ type: "error", message: "Could not process recorded audio — please try again" });
+        }
+        break;
+      }
+
+      case "talk_cancel": {
+        if (!session) { console.warn("[relay] talk_cancel: no session"); return; }
+        try {
+          console.log("[relay] talk_cancel → activityEnd without response timeout");
+          session.sendRealtimeInput({ activityEnd: {} });
+        } catch (e) {
+          console.error("talk_cancel error:", e);
         }
         break;
       }
