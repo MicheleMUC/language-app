@@ -12,9 +12,12 @@ export function useConversation(scenario: Scenario) {
   const [partialTranscript, setPartialTranscript] = useState("");
   const [lastUserTranscript, setLastUserTranscript] = useState("");
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
+  const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
   const startedRef = useRef(false); // guard against Strict Mode double-invocation
   const startTokenRef = useRef(0);
+  const talkEndTimeRef = useRef(0);
+  const firstAudioAfterTalkRef = useRef(false);
   const player = useAudioPlayer(null);
   const playerStatus = useAudioPlayerStatus(player);
 
@@ -64,6 +67,11 @@ export function useConversation(scenario: Scenario) {
           setStatus((prev) => (prev === "connecting" ? "active" : prev));
           break;
         case "audio":
+          if (firstAudioAfterTalkRef.current) {
+            firstAudioAfterTalkRef.current = false;
+            const latency = Date.now() - talkEndTimeRef.current;
+            if (latency > 0 && latency < 30000) setLastLatencyMs(latency);
+          }
           setStatus((prev) => {
             if (prev === "thinking") console.log("[conv] status: thinking → active (audio)");
             return prev === "thinking" ? "active" : prev;
@@ -163,6 +171,8 @@ export function useConversation(scenario: Scenario) {
 
   const stopTalking = useCallback(async () => {
     setStatus("thinking");
+    talkEndTimeRef.current = Date.now();
+    firstAudioAfterTalkRef.current = true;
     const audio = await stopCapture();
 
     if (!audio) {
@@ -192,6 +202,7 @@ export function useConversation(scenario: Scenario) {
     partialTranscript,
     lastUserTranscript,
     activeVocab,
+    lastLatencyMs,
     isModelSpeaking: playerStatus.playing,
     start,
     startTalking,

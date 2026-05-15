@@ -270,7 +270,7 @@ export default function ConversationScreen() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const sessionIdRef = useRef<string | null>(null);
 
-  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const newVocabulary = useMemo((): VocabItem[] =>
@@ -302,29 +302,30 @@ export default function ConversationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleEnd = useCallback(async () => {
-    await end();
-    const userId = user?.id ?? "";
+  const sessionSavedRef = useRef(false);
 
-    // Don't persist drive-by taps (< 2 turns means nothing meaningful happened)
-    if (turns.length < 2) return;
+  const doSaveAndFeedback = useCallback(async (currentTurns: ConversationTurn[], currentVocab: VocabItem[]) => {
+    if (sessionSavedRef.current) return;
+    sessionSavedRef.current = true;
+
+    const userId = user?.id ?? "";
+    if (currentTurns.length < 2) return;
 
     const sessionId = await saveSession({
       scenarioId: id,
       userId,
-      turns,
-      startedAt: turns[0]?.timestamp ?? Date.now(),
+      turns: currentTurns,
+      startedAt: currentTurns[0]?.timestamp ?? Date.now(),
       endedAt: Date.now(),
-      newVocabulary,
+      newVocabulary: currentVocab,
     }).catch(() => null);
     sessionIdRef.current = sessionId;
-    upsertVocabulary(userId, newVocabulary).catch(() => {});
+    upsertVocabulary(userId, currentVocab).catch(() => {});
 
-    // Request AI feedback if the user spoke at least once
-    const userTurnCount = turns.filter((t) => t.role === "user").length;
+    const userTurnCount = currentTurns.filter((t) => t.role === "user").length;
     if (userTurnCount >= 1) {
       setFeedbackLoading(true);
-      requestFeedback(turns, scenario, level)
+      requestFeedback(currentTurns, scenario, level)
         .then((fb) => {
           setFeedback(fb);
           if (sessionIdRef.current) {
@@ -334,7 +335,25 @@ export default function ConversationScreen() {
         .catch(() => {})
         .finally(() => setFeedbackLoading(false));
     }
-  }, [end, id, turns, newVocabulary, user, scenario, level]);
+  }, [id, user, scenario, level]);
+
+  // Capture current turns/vocab in a ref so the effect below always sees fresh values
+  const turnsRef = useRef(turns);
+  const newVocabularyRef = useRef(newVocabulary);
+  turnsRef.current = turns;
+  newVocabularyRef.current = newVocabulary;
+
+  // Trigger save both when user ends and when the WS closes unexpectedly
+  useEffect(() => {
+    if (status === "ended") {
+      doSaveAndFeedback(turnsRef.current, newVocabularyRef.current);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const handleEnd = useCallback(async () => {
+    await end();
+  }, [end]);
 
   const handleConfirmEnd = useCallback(() => {
     Alert.alert(
@@ -405,8 +424,15 @@ export default function ConversationScreen() {
 
           {(partialTranscript || lastAiTurn) && isConnected ? (
             <View style={styles.speechContent}>
-              <Text style={styles.speakerLabel}>{scenario.characterName.toUpperCase()}</Text>
-              <Text style={styles.speechItalian}>"{partialTranscript || lastAiTurn!.italian}"</Text>
+              <Text style={[styles.speakerLabel, partialTranscript ? styles.speakerLabelUser : styles.speakerLabelAI]}>
+                {partialTranscript ? "TU" : scenario.characterName.toUpperCase()}
+              </Text>
+              <Text style={[styles.speechItalian, partialTranscript ? styles.speechItalianUser : null]}>
+                "{partialTranscript || lastAiTurn!.italian}"
+              </Text>
+              {!partialTranscript && lastLatencyMs && (
+                <Text style={styles.latencyText}>{(lastLatencyMs / 1000).toFixed(1)}s</Text>
+              )}
             </View>
           ) : (
             <View style={styles.idleContent}>
@@ -471,11 +497,11 @@ export default function ConversationScreen() {
                 style={[
                   styles.micMainBtn,
                   isTalking && styles.micMainBtnActive,
-                  isModelSpeaking && { opacity: 0.4 },
+                  (isModelSpeaking || isThinking) && styles.micMainBtnDisabled,
                 ]}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 32 }}>🎙️</Text>
+                <Text style={{ fontSize: 32 }}>{isModelSpeaking ? "🔇" : "🎙️"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -572,9 +598,13 @@ const styles = StyleSheet.create({
   characterName: { fontSize: 26, fontWeight: "700", color: "#e5e2e1", textAlign: "center" },
   settingText: { fontSize: 15, color: "#e1bfb4", textAlign: "center" },
   speechContent: { alignItems: "center", maxWidth: "100%", gap: 12 },
-  speakerLabel: { fontSize: 11, fontWeight: "700", color: "#ffb59b", letterSpacing: 2, textTransform: "uppercase" },
+  speakerLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 2, textTransform: "uppercase" },
+  speakerLabelAI: { color: "#dcc841" },
+  speakerLabelUser: { color: "#ff6d33" },
   speechItalian: { fontSize: 28, fontStyle: "italic", color: "#e5e2e1", textAlign: "center", lineHeight: 38, fontWeight: "600" },
+  speechItalianUser: { color: "#ff9c74" },
   speechEnglish: { fontSize: 15, color: "#e1bfb4", textAlign: "center", opacity: 0.7, lineHeight: 22 },
+  latencyText: { fontSize: 11, color: "#594139", letterSpacing: 1 },
   listeningPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -615,6 +645,10 @@ const styles = StyleSheet.create({
   micMainBtnActive: {
     backgroundColor: "#c44a1a",
     transform: [{ scale: 1.1 }],
+  },
+  micMainBtnDisabled: {
+    backgroundColor: "#2a2a2a",
+    opacity: 0.5,
   },
   talkingPill: { backgroundColor: "rgba(255,109,51,0.1)", borderColor: "rgba(255,109,51,0.3)" },
   thinkingPill: { backgroundColor: "rgba(123,94,167,0.1)", borderColor: "rgba(123,94,167,0.3)" },
