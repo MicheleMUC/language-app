@@ -76,4 +76,5 @@ export type WsServerMessage =
   | { type: "transcript_partial"; italian: string } // streaming word-by-word from model
   | { type: "vocab_hint"; item: VocabItem }
   | { type: "interrupt" }
+  | { type: "turn_error"; message: string }
   | { type: "error"; message: string };

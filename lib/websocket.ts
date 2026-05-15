@@ -11,6 +11,7 @@ export class ConversationSocket {
   private ws: WebSocket | null = null;
   private onMessage: (msg: WsServerMessage) => void;
   private onClose: () => void;
+  private disposed = false;
 
   constructor(onMessage: (msg: WsServerMessage) => void, onClose: () => void) {
     this.onMessage = onMessage;
@@ -20,11 +21,36 @@ export class ConversationSocket {
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const url = getWsUrl();
+      let settled = false;
       this.ws = new WebSocket(url);
-      this.ws.onopen = () => resolve();
-      this.ws.onerror = (e) => reject(e);
-      this.ws.onclose = () => this.onClose();
+      this.ws.onopen = () => {
+        settled = true;
+        if (this.disposed) this.ws?.close();
+        resolve();
+      };
+      this.ws.onerror = (e) => {
+        if (this.disposed) {
+          if (!settled) {
+            settled = true;
+            resolve();
+          }
+          return;
+        }
+        settled = true;
+        reject(e);
+      };
+      this.ws.onclose = () => {
+        if (this.disposed) {
+          if (!settled) {
+            settled = true;
+            resolve();
+          }
+          return;
+        }
+        this.onClose();
+      };
       this.ws.onmessage = (e) => {
+        if (this.disposed) return;
         try {
           const msg: WsServerMessage = JSON.parse(e.data as string);
           this.onMessage(msg);
@@ -36,12 +62,17 @@ export class ConversationSocket {
   }
 
   send(msg: WsClientMessage) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (!this.disposed && this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
     }
   }
 
+  isOpen() {
+    return !this.disposed && this.ws?.readyState === WebSocket.OPEN;
+  }
+
   close() {
+    this.disposed = true;
     this.ws?.close();
     this.ws = null;
   }

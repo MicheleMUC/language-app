@@ -68,7 +68,13 @@ export function useAudioCapture() {
     if (!isRecordingRef.current) return null;
 
     const uri = recorder.uri;
-    await recorder.stop();
+    try {
+      await recorder.stop();
+    } catch (e) {
+      isRecordingRef.current = false;
+      console.warn("[audio] recorder stop failed", e);
+      return null;
+    }
     isRecordingRef.current = false;
 
     if (!uri) {

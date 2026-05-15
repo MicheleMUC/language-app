@@ -14,6 +14,7 @@ export function useConversation(scenario: Scenario) {
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
   const startedRef = useRef(false); // guard against Strict Mode double-invocation
+  const startTokenRef = useRef(0);
   const player = useAudioPlayer(null);
   const playerStatus = useAudioPlayerStatus(player);
 
@@ -97,6 +98,11 @@ export function useConversation(scenario: Scenario) {
           try { player.pause(); } catch { /* ignore */ }
           setPartialTranscript("");
           break;
+        case "turn_error":
+          console.warn("[conv] turn error:", msg.message);
+          setPartialTranscript("");
+          setStatus("active");
+          break;
         case "error":
           console.error("[conv] server error:", (msg as { type: "error"; message?: string }).message);
           setStatus("ended");
@@ -109,6 +115,7 @@ export function useConversation(scenario: Scenario) {
   // Close socket on unmount so Strict Mode's unmount/remount doesn't leave orphan connections
   useEffect(() => {
     return () => {
+      startTokenRef.current++;
       socketRef.current?.close();
       socketRef.current = null;
     };
@@ -122,6 +129,7 @@ export function useConversation(scenario: Scenario) {
       return;
     }
     startedRef.current = true;
+    const startToken = ++startTokenRef.current;
     // Close any stale socket from a previous attempt
     if (socketRef.current) {
       socketRef.current.close();
@@ -132,6 +140,11 @@ export function useConversation(scenario: Scenario) {
     const socket = new ConversationSocket(handleMessage, () => setStatus("ended"));
     socketRef.current = socket;
     await socket.connect();
+    if (startToken !== startTokenRef.current || socketRef.current !== socket || !socket.isOpen()) {
+      console.warn("[conv] start() resolved after cleanup — closing stale socket");
+      socket.close();
+      return;
+    }
     socket.send({ type: "start", scenarioId: scenario.id, scenario });
   }, [scenario, handleMessage]);
 
