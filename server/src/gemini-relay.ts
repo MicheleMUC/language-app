@@ -1,6 +1,6 @@
 import type { WebSocket } from "ws";
 import { spawn } from "child_process";
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 type CapturedAudio = { data: string; mimeType: string };
 
@@ -11,13 +11,9 @@ type ClientMsg =
   | { type: "talk_cancel" }
   | { type: "end" };
 
-type Turn = { role: "user" | "assistant"; italian: string };
-
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
-const TEXT_MODEL = "gemini-3-flash-preview";
-const TRANSCRIPTION_MODEL = "gemini-2.5-flash";
-const TTS_MODEL = "gemini-2.5-flash-preview-tts";
+const LIVE_MODEL = "gemini-2.0-flash-exp";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ffmpegPath = require("ffmpeg-static") as string | null;
 const activeScenarioSockets = new Map<string, WebSocket>();
@@ -84,24 +80,6 @@ function transcodeToPcm(audio: CapturedAudio): Promise<Buffer> {
   });
 }
 
-function cleanText(text: string) {
-  return text
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/^["“”]+|["“”]+$/g, "")
-    .trim();
-}
-
-function extractInlineAudio(response: unknown): Buffer {
-  const parts = (response as {
-    candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string | Buffer } }> } }>;
-  }).candidates?.[0]?.content?.parts ?? [];
-
-  const data = parts.find((part) => part.inlineData?.data)?.inlineData?.data;
-  if (!data) throw new Error("TTS response did not include audio data");
-
-  return Buffer.isBuffer(data) ? data : Buffer.from(data, "base64");
-}
-
 function buildSystemInstruction(scenario: Record<string, unknown>) {
   const vocab = (scenario.vocabulary as Array<{ italian: string; english: string; example?: string }> ?? [])
     .map((v) => `  - ${v.italian} (${v.english})${v.example ? `: "${v.example}"` : ""}`)
@@ -140,11 +118,10 @@ export function handleConversationWs(ws: WebSocket) {
     ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
     : new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
 
-  let systemInstruction = "";
-  let scenarioName = "Assistant";
   let activeScenarioId: string | null = null;
-  const history: Turn[] = [];
   let active = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let session: any = null;
 
   function send(obj: unknown) {
     if (active && ws.readyState === ws.OPEN) {
@@ -152,103 +129,39 @@ export function handleConversationWs(ws: WebSocket) {
     }
   }
 
-  function formatHistory() {
-    return history
-      .slice(-12)
-      .map((turn) => `${turn.role === "user" ? "Learner" : scenarioName}: ${turn.italian}`)
-      .join("\n");
-  }
+  const audioChunks: Buffer[] = [];
+  let txBuffer = "";
 
-  async function transcribeCapturedAudio(audio: CapturedAudio) {
-    const inputBytes = Math.round(audio.data.length * 0.75);
-    console.log(`[relay] transcribing user audio (${inputBytes} bytes, ${audio.mimeType})`);
-    const pcm = await transcodeToPcm(audio);
-    if (pcm.byteLength === 0) {
-      throw new Error("Transcoded audio was empty");
-    }
-
-    const wav = makePcmWav(pcm, 16000);
-    const result = await ai.models.generateContent({
-      model: TRANSCRIPTION_MODEL,
-      config: {
-        systemInstruction: `You are a speech transcription engine for an Italian conversation practice app.
-Transcribe only what the learner says.
-Return only the transcript text, with no markdown, no quotes, and no explanation.
-If there is no intelligible speech, return exactly: EMPTY`,
-      },
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: "Transcribe this learner audio. Preserve Italian if spoken; preserve English if the learner spoke English." },
-            { inlineData: { data: wav.toString("base64"), mimeType: "audio/wav" } },
-          ],
-        },
-      ],
-    });
-
-    const transcript = cleanText(result.text ?? "");
-    if (!transcript || transcript.toUpperCase() === "EMPTY") {
-      throw new Error("No intelligible speech found in recording");
-    }
-
-    console.log(`[relay] user transcript: "${transcript.slice(0, 120)}"`);
-    return transcript;
-  }
-
-  async function generateAssistantText(userTranscript?: string) {
-    const prompt = userTranscript
-      ? `Conversation so far:
-${formatHistory()}
-
-The learner just said: "${userTranscript}"
-
-Reply now as ${scenarioName}. Return only your Italian reply.`
-      : `Begin the scenario by greeting the learner warmly and setting the scene in one sentence. Return only your Italian line.`;
-
-    const result = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      config: {
-        systemInstruction,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-      contents: prompt,
-    });
-
-    const text = cleanText(result.text ?? "");
-    if (!text) throw new Error("Text model returned an empty assistant response");
-    return text;
-  }
-
-  async function synthesizeSpeech(text: string) {
-    console.log(`[relay] synthesizing assistant audio: "${text.slice(0, 120)}"`);
-    const result = await ai.models.generateContent({
-      model: TTS_MODEL,
-      contents: [{ parts: [{ text: `Say in warm, clear Italian: ${text}` }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
-          languageCode: "it-IT",
-        },
-      },
-    });
-
-    const pcm = extractInlineAudio(result);
-    if (pcm.byteLength === 0) throw new Error("TTS returned empty audio");
-    return makePcmWav(pcm, 24000);
-  }
-
-  async function sendAssistantTurn(text: string) {
-    history.push({ role: "assistant", italian: text });
-    send({ type: "transcript", role: "assistant", italian: text, text: "" });
-
-    try {
-      const wav = await synthesizeSpeech(text);
+  function flushTurn() {
+    if (audioChunks.length > 0) {
+      // Gemini Live outputs audio at 24000Hz by default
+      const pcm = Buffer.concat(audioChunks);
+      const wav = makePcmWav(pcm, 24000);
       send({ type: "audio", data: wav.toString("base64"), mimeType: "audio/wav" });
-    } catch (e) {
-      console.error("TTS error:", e);
-      send({ type: "turn_error", message: "I generated a reply, but could not play audio for it" });
+      audioChunks.length = 0;
+    }
+
+    if (txBuffer.trim()) {
+      send({ type: "transcript", role: "assistant", italian: txBuffer.trim(), text: "" });
+      txBuffer = "";
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function handleLiveMessage(message: any) {
+    const parts = message.serverContent?.modelTurn?.parts ?? [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        audioChunks.push(Buffer.from(part.inlineData.data, "base64"));
+      }
+      if (part.text) {
+        txBuffer += part.text;
+      }
+    }
+
+    // Flush complete turn as WAV + transcript
+    if (message.serverContent?.turnComplete) {
+      flushTurn();
     }
   }
 
@@ -277,15 +190,47 @@ Reply now as ${scenarioName}. Return only your Italian reply.`
           activeScenarioSockets.set(scenarioId, ws);
         }
 
-        systemInstruction = buildSystemInstruction(msg.scenario);
-        scenarioName = String(msg.scenario.characterName ?? "Assistant");
+        const systemInstruction = buildSystemInstruction(msg.scenario);
 
         try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const liveModel = (ai as any).live;
+          session = await liveModel.connect({
+            model: LIVE_MODEL,
+            config: {
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+                },
+              },
+            },
+            callbacks: {
+              onmessage: handleLiveMessage,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              onerror: (err: any) => {
+                console.error("Gemini Live error:", err);
+                send({ type: "error", message: err?.message ?? "Live API error" });
+              },
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              onclose: (e: any) => {
+                console.log("Live session closed:", e?.code, e?.reason);
+              },
+            },
+          });
+
           send({ type: "ready" });
-          const greeting = await generateAssistantText();
-          await sendAssistantTurn(greeting);
+          
+          // Kick the model to deliver its opening greeting
+          session.send({
+            clientContent: {
+              turns: [{ role: "user", parts: [{ text: "Ciao!" }] }],
+              turnComplete: true,
+            }
+          });
         } catch (e) {
-          console.error("Failed to start conversation:", e);
+          console.error("Failed to start Live session:", e);
           send({ type: "error", message: "Failed to start conversation" });
         }
         break;
@@ -298,17 +243,33 @@ Reply now as ${scenarioName}. Return only your Italian reply.`
       }
 
       case "talk_end": {
+        if (!session) {
+          console.warn("talk_end received but session is null");
+          break;
+        }
         try {
-          console.log("[relay] talk_end -> transcribe, generate, synthesize");
-          const transcript = await transcribeCapturedAudio(msg.audio);
-          history.push({ role: "user", italian: transcript });
-          send({ type: "transcript", role: "user", italian: transcript, text: "" });
+          console.log("[relay] talk_end -> transcoding to PCM and sending to Live API");
+          const pcm = await transcodeToPcm(msg.audio);
+          
+          // Send audio chunks to Live API
+          session.send({
+            realtimeInput: {
+              mediaChunks: [{
+                mimeType: "audio/pcm;rate=16000",
+                data: pcm.toString("base64")
+              }]
+            }
+          });
 
-          const assistantText = await generateAssistantText(transcript);
-          await sendAssistantTurn(assistantText);
+          // Explicitly signal the turn is complete
+          session.send({
+            clientContent: {
+              turnComplete: true
+            }
+          });
         } catch (e) {
           console.error("talk_end error:", e);
-          send({ type: "turn_error", message: "I could not answer that turn - please try again" });
+          send({ type: "turn_error", message: "I could not process your audio - please try again" });
         }
         break;
       }
@@ -320,16 +281,23 @@ Reply now as ${scenarioName}. Return only your Italian reply.`
       case "end":
         active = false;
         try {
+          await session?.close();
+        } catch { /* ignore */ }
+        session = null;
+        try {
           ws.close();
         } catch { /* ignore */ }
         break;
     }
   });
 
-  ws.on("close", () => {
+  ws.on("close", async () => {
     active = false;
     if (activeScenarioId && activeScenarioSockets.get(activeScenarioId) === ws) {
       activeScenarioSockets.delete(activeScenarioId);
     }
+    try {
+      await session?.close();
+    } catch { /* ignore */ }
   });
 }
