@@ -13,7 +13,8 @@ type ClientMsg =
 
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
-const LIVE_MODEL = "gemini-2.0-flash-exp";
+const LIVE_MODEL_API = "gemini-3.1-flash-live-preview";
+const LIVE_MODEL_VERTEX = "gemini-3.1-flash-live-preview";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ffmpegPath = require("ffmpeg-static") as string | null;
 const activeScenarioSockets = new Map<string, WebSocket>();
@@ -196,14 +197,15 @@ export function handleConversationWs(ws: WebSocket) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const liveModel = (ai as any).live;
           session = await liveModel.connect({
-            model: LIVE_MODEL,
+            model: GEMINI_API_KEY ? LIVE_MODEL_API : LIVE_MODEL_VERTEX,
             config: {
               systemInstruction: { parts: [{ text: systemInstruction }] },
-              generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                  voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
-                },
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+              },
+              realtimeInputConfig: {
+                automaticActivityDetection: { disabled: true },
               },
             },
             callbacks: {
@@ -221,13 +223,11 @@ export function handleConversationWs(ws: WebSocket) {
           });
 
           send({ type: "ready" });
-          
+
           // Kick the model to deliver its opening greeting
-          session.send({
-            clientContent: {
-              turns: [{ role: "user", parts: [{ text: "Ciao!" }] }],
-              turnComplete: true,
-            }
+          session.sendClientContent({
+            turns: [{ role: "user", parts: [{ text: "Ciao!" }] }],
+            turnComplete: true,
           });
         } catch (e) {
           console.error("Failed to start Live session:", e);
@@ -239,6 +239,11 @@ export function handleConversationWs(ws: WebSocket) {
       case "talk_start": {
         console.log("[relay] talk_start -> interrupt current playback");
         send({ type: "interrupt" });
+        try {
+          session?.sendRealtimeInput({ activityStart: {} });
+        } catch (e) {
+          console.warn("activityStart failed:", e);
+        }
         break;
       }
 
@@ -250,23 +255,10 @@ export function handleConversationWs(ws: WebSocket) {
         try {
           console.log("[relay] talk_end -> transcoding to PCM and sending to Live API");
           const pcm = await transcodeToPcm(msg.audio);
-          
-          // Send audio chunks to Live API
-          session.send({
-            realtimeInput: {
-              mediaChunks: [{
-                mimeType: "audio/pcm;rate=16000",
-                data: pcm.toString("base64")
-              }]
-            }
-          });
 
-          // Explicitly signal the turn is complete
-          session.send({
-            clientContent: {
-              turnComplete: true
-            }
-          });
+          // SDK expects a plain object with mimeType+data, not a native Blob
+          session.sendRealtimeInput({ audio: { mimeType: "audio/pcm;rate=16000", data: pcm.toString("base64") } });
+          session.sendRealtimeInput({ activityEnd: {} });
         } catch (e) {
           console.error("talk_end error:", e);
           send({ type: "turn_error", message: "I could not process your audio - please try again" });

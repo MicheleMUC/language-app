@@ -60,7 +60,7 @@ async function _doGenerate(
     memoryInstruction += `\n\nThe learner's coach last noted: "${lastTip}". Design the scenario so this grammar point comes up naturally in conversation.`;
   }
   const result = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     config: { systemInstruction: SYSTEM_PROMPT + difficultyInstruction + memoryInstruction },
     contents: intent,
   });
@@ -91,7 +91,7 @@ async function warmCache() {
         console.error(`[cache] warm failed for "${intent}":`, e)
       );
     }
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 2000));
   }
   console.log("[cache] warm-up complete");
 }

@@ -30,7 +30,7 @@ Be encouraging and practical. Keep your answer under 150 words.`;
 
   try {
     const result = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       config: { systemInstruction },
       contents: question,
     });
