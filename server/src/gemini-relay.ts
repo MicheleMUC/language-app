@@ -150,18 +150,31 @@ export function handleConversationWs(ws: WebSocket) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleLiveMessage(message: any) {
-    const parts = message.serverContent?.modelTurn?.parts ?? [];
+    const sc = message.serverContent;
+    if (!sc) return;
+
+    // User speech transcription
+    const inputText = sc.inputTranscription?.text;
+    if (inputText?.trim()) {
+      send({ type: "transcript", role: "user", italian: inputText.trim(), text: "" });
+    }
+
+    // Model audio transcription
+    const outputText = sc.outputTranscription?.text;
+    if (outputText?.trim()) {
+      txBuffer += outputText;
+    }
+
+    // Model audio chunks
+    const parts = sc.modelTurn?.parts ?? [];
     for (const part of parts) {
       if (part.inlineData?.data) {
         audioChunks.push(Buffer.from(part.inlineData.data, "base64"));
       }
-      if (part.text) {
-        txBuffer += part.text;
-      }
     }
 
     // Flush complete turn as WAV + transcript
-    if (message.serverContent?.turnComplete) {
+    if (sc.turnComplete) {
       flushTurn();
     }
   }
@@ -204,6 +217,8 @@ export function handleConversationWs(ws: WebSocket) {
               speechConfig: {
                 voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
               },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
               realtimeInputConfig: {
                 automaticActivityDetection: { disabled: true },
               },
