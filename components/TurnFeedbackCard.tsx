@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import { View, Text, StyleSheet, Animated, Pressable } from "react-native";
 import type { TurnFeedback } from "@/types";
 
 interface Props {
@@ -51,6 +51,7 @@ export function TurnFeedbackCard({ feedback, onDismiss }: Props) {
   if (!hasCorrection && !hasPraiseOnly) return null;
 
   return (
+    <Pressable onPress={() => onDismissRef.current()} accessibilityRole="button" accessibilityLabel="Chiudi feedback">
     <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
       {hasCorrection ? (
         <>
@@ -68,6 +69,7 @@ export function TurnFeedbackCard({ feedback, onDismiss }: Props) {
         </View>
       )}
     </Animated.View>
+    </Pressable>
   );
 }
 
@@ -80,7 +82,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     borderWidth: 1,
     borderColor: "#353534",
-    alignSelf: "flex-start",
+    alignSelf: "center",
     maxWidth: "90%",
   },
   correctionRow: {
@@ -96,7 +98,7 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     textDecorationColor: "#ff6d33",
   },
-  arrow: { fontSize: 13, color: "#594139" },
+  arrow: { fontSize: 13, color: "#a88a80" },
   corrected: { fontSize: 13, fontWeight: "700", color: "#a8e4d4" },
   explanation: { fontSize: 12, color: "#a88a80", lineHeight: 17 },
   praiseRow: { flexDirection: "row", alignItems: "center", gap: 6 },

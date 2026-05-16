@@ -484,7 +484,7 @@ export default function ConversationScreen() {
             </View>
           )}
 
-          {isConnected && !isTalking && (
+          {isConnected && !isTalking && !isModelSpeaking && (
             <View style={styles.turnFeedbackWrap}>
               <TurnFeedbackCard
                 feedback={turnFeedback}
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     maxWidth: "90%",
   },
   hoSentitoText: { fontSize: 13, color: "#e1bfb4", textAlign: "center", fontStyle: "italic", opacity: 0.75 },
-  turnFeedbackWrap: { marginTop: 8, alignItems: "flex-start", paddingHorizontal: 4 },
+  turnFeedbackWrap: { marginTop: 8, alignItems: "center" },
   repeatBtn: { backgroundColor: "#ff6d33", borderRadius: 50, paddingVertical: 20, alignItems: "center", marginBottom: 16 },
   repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#5f1b00" },
   homeBtn: { backgroundColor: "#353534", borderRadius: 50, paddingVertical: 20, alignItems: "center", borderWidth: 1, borderColor: "#594139" },

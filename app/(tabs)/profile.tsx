@@ -101,7 +101,6 @@ export default function ProfileScreen() {
               [
                 { key: "microfeedback", label: "Correzione per turno", desc: "Piccola correzione dopo ogni tua risposta" },
                 { key: "endSession", label: "Analisi fine sessione", desc: "Riepilogo completo a fine conversazione" },
-                { key: "naturalCorrection", label: "Correzione naturale", desc: "L'AI modella la forma corretta nelle risposte" },
               ] as { key: keyof FeedbackLayers; label: string; desc: string }[]
             ).map(({ key, label, desc }) => (
               <View key={key} style={styles.feedbackRow}>
@@ -117,6 +116,22 @@ export default function ProfileScreen() {
                 />
               </View>
             ))}
+          </View>
+
+          <Text style={styles.sectionLabel}>COMPORTAMENTO AI</Text>
+          <View style={styles.feedbackSection}>
+            <View style={styles.feedbackRow}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.feedbackLabel}>Correzione naturale</Text>
+                <Text style={styles.feedbackDesc}>L'AI corregge implicitamente nella risposta (cambia il comportamento, non solo le notifiche)</Text>
+              </View>
+              <Switch
+                value={feedbackLayers.naturalCorrection}
+                onValueChange={(v) => updateFeedbackLayer("naturalCorrection", v)}
+                trackColor={{ false: "#353534", true: "#ff6d33" }}
+                thumbColor="#e5e2e1"
+              />
+            </View>
           </View>
 
           <TouchableOpacity
