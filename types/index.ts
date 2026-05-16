@@ -79,7 +79,7 @@ export interface CapturedAudio {
 
 // WebSocket message types between app and Cloud Run relay
 export type WsClientMessage =
-  | { type: "start"; scenarioId: string; scenario: Scenario }
+  | { type: "start"; scenarioId: string; scenario: Scenario; preferences?: { naturalCorrection?: boolean } }
   | { type: "talk_start" }
   | { type: "talk_end"; audio: CapturedAudio }
   | { type: "talk_cancel" }

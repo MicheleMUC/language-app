@@ -1,14 +1,7 @@
 import { Router } from "express";
-import { GoogleGenAI } from "@google/genai";
+import { ai } from "./ai-client";
 
 export const feedbackTurnRouter = Router();
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
-const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
-
-const ai = GEMINI_API_KEY
-  ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
-  : new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
 
 const SYSTEM_PROMPT = `You are an expert Italian language coach reviewing a single student utterance.
 

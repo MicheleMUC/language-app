@@ -6,7 +6,7 @@ import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/t
 
 type Status = "idle" | "connecting" | "active" | "thinking" | "talking" | "ended";
 
-export function useConversation(scenario: Scenario) {
+export function useConversation(scenario: Scenario, preferences?: { naturalCorrection?: boolean }) {
   const [status, setStatus] = useState<Status>("idle");
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [partialTranscript, setPartialTranscript] = useState("");
@@ -153,7 +153,7 @@ export function useConversation(scenario: Scenario) {
       socket.close();
       return;
     }
-    socket.send({ type: "start", scenarioId: scenario.id, scenario });
+    socket.send({ type: "start", scenarioId: scenario.id, scenario, preferences });
   }, [scenario, handleMessage]);
 
   const startTalking = useCallback(async () => {

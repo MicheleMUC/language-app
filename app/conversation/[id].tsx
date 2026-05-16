@@ -265,14 +265,14 @@ export default function ConversationScreen() {
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
 
   const { user } = useAuth();
-  const { level, feedbackLayers } = usePreferences(user?.id);
+  const { level, feedbackLayers, loading: preferencesLoading } = usePreferences(user?.id);
   const [showSidekick, setShowSidekick] = useState(false);
   const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [turnFeedback, setTurnFeedback] = useState<TurnFeedback | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection });
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const newVocabulary = useMemo((): VocabItem[] =>
@@ -300,9 +300,9 @@ export default function ConversationScreen() {
   }, [start]);
 
   useEffect(() => {
-    handleStart();
+    if (!preferencesLoading) handleStart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [preferencesLoading]);
 
   const sessionSavedRef = useRef(false);
 

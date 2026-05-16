@@ -1,20 +1,18 @@
 import type { WebSocket } from "ws";
 import { spawn } from "child_process";
-import { GoogleGenAI } from "@google/genai";
+import { ai } from "./ai-client";
 
 type CapturedAudio = { data: string; mimeType: string };
 
 type ClientMsg =
-  | { type: "start"; scenarioId: string; scenario: Record<string, unknown> }
+  | { type: "start"; scenarioId: string; scenario: Record<string, unknown>; preferences?: { naturalCorrection?: boolean } }
   | { type: "talk_start" }
   | { type: "talk_end"; audio: CapturedAudio }
   | { type: "talk_cancel" }
   | { type: "end" };
 
-const PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
-const LIVE_MODEL_API = "gemini-3.1-flash-live-preview";
-const LIVE_MODEL_VERTEX = "gemini-3.1-flash-live-preview";
+const LIVE_MODEL = "gemini-3.1-flash-live-preview";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ffmpegPath = require("ffmpeg-static") as string | null;
 const activeScenarioSockets = new Map<string, WebSocket>();
@@ -81,7 +79,7 @@ function transcodeToPcm(audio: CapturedAudio): Promise<Buffer> {
   });
 }
 
-function buildSystemInstruction(scenario: Record<string, unknown>) {
+function buildSystemInstruction(scenario: Record<string, unknown>, naturalCorrection = true) {
   const vocab = (scenario.vocabulary as Array<{ italian: string; english: string; example?: string }> ?? [])
     .map((v) => `  - ${v.italian} (${v.english})${v.example ? `: "${v.example}"` : ""}`)
     .join("\n");
@@ -103,7 +101,7 @@ CONVERSATION RULES (follow strictly):
 - Keep every response to 1-2 short sentences. This is a spoken conversation.
 - Respond DIRECTLY to what the learner just said; acknowledge it first.
 - If you cannot understand the learner, say exactly: "Scusa, non ho capito. Puoi ripetere piu lentamente?"
-- If the learner makes a grammar error, acknowledge their meaning and naturally model the correct form in your reply. Never explicitly say "you made an error."
+- ${naturalCorrection ? 'If the learner makes a grammar error, acknowledge their meaning and naturally model the correct form in your reply. Never explicitly say "you made an error."' : 'Do NOT correct the learner\'s grammar. Focus only on continuing the conversation naturally.'}
 - If the learner speaks English, redirect warmly: "Proviamo in italiano! Come si dice...?"
 - ${difficultyGuide}
 
@@ -115,10 +113,6 @@ ${phrases || "(none specified)"}`;
 }
 
 export function handleConversationWs(ws: WebSocket) {
-  const ai = GEMINI_API_KEY
-    ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
-    : new GoogleGenAI({ vertexai: true, project: PROJECT, location: "us-central1" });
-
   let activeScenarioId: string | null = null;
   let active = true;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,13 +198,13 @@ export function handleConversationWs(ws: WebSocket) {
           activeScenarioSockets.set(scenarioId, ws);
         }
 
-        const systemInstruction = buildSystemInstruction(msg.scenario);
+        const systemInstruction = buildSystemInstruction(msg.scenario, msg.preferences?.naturalCorrection ?? true);
 
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const liveModel = (ai as any).live;
           session = await liveModel.connect({
-            model: GEMINI_API_KEY ? LIVE_MODEL_API : LIVE_MODEL_VERTEX,
+            model: LIVE_MODEL,
             config: {
               systemInstruction: { parts: [{ text: systemInstruction }] },
               responseModalities: ["AUDIO"],

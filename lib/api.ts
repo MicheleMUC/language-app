@@ -45,13 +45,22 @@ export async function requestTurnFeedback(
   userLevel: string
 ): Promise<TurnFeedback> {
   const base = getServerBase();
-  const res = await fetch(`${base}/feedback/turn`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ italian, scenario, userLevel }),
-  });
-  if (!res.ok) return { ok: true };
-  return res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
+  try {
+    const res = await fetch(`${base}/feedback/turn`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ italian, scenario, userLevel }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: true };
+    return res.json();
+  } catch {
+    return { ok: true };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function requestFeedback(
