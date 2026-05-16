@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { GoogleGenAI } from "@google/genai";
-import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { supabase } from "./supabase";
 
 export const scenarioRouter = Router();
 
@@ -44,34 +43,31 @@ const scenarioCache = new Map<string, object>();
 // In-flight promise map to collapse concurrent identical requests
 const generating = new Map<string, Promise<object>>();
 
-const CACHE_FILE = join(__dirname, "../../scenario-cache.json");
+const SHARED_USER = "__shared__";
 
-function loadCacheFromDisk() {
-  try {
-    const raw = readFileSync(CACHE_FILE, "utf-8");
-    const entries = JSON.parse(raw) as Record<string, object>;
-    for (const [key, val] of Object.entries(entries)) {
-      scenarioCache.set(key, val);
-    }
-    console.log(`[cache] loaded ${scenarioCache.size} scenarios from disk`);
-  } catch {
-    // File doesn't exist yet — start fresh
+async function loadCacheFromSupabase() {
+  if (!supabase) return;
+  const { data, error } = await supabase
+    .from("pregenerated_scenarios")
+    .select("intent, data")
+    .eq("user_id", SHARED_USER);
+  if (error) { console.error("[cache] failed to load from Supabase:", error.message); return; }
+  for (const row of data ?? []) {
+    scenarioCache.set(row.intent, row.data);
   }
+  console.log(`[cache] loaded ${data?.length ?? 0} scenarios from Supabase`);
 }
 
-function saveCacheToDisk() {
-  try {
-    const entries: Record<string, object> = {};
-    for (const [key, val] of scenarioCache.entries()) {
-      entries[key] = val;
-    }
-    writeFileSync(CACHE_FILE, JSON.stringify(entries, null, 2));
-  } catch (e) {
-    console.error("[cache] failed to persist cache:", e);
-  }
+async function saveCacheToSupabase(intent: string, data: object) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from("pregenerated_scenarios")
+    .upsert(
+      { user_id: SHARED_USER, intent, data, generated_at: new Date().toISOString() },
+      { onConflict: "user_id,intent" }
+    );
+  if (error) console.error("[cache] failed to persist to Supabase:", error.message);
 }
-
-loadCacheFromDisk();
 
 async function _doGenerate(
   intent: string,
@@ -108,7 +104,12 @@ async function generateAndCache(intent: string, difficulty?: string): Promise<ob
   if (generating.has(cacheKey)) return generating.get(cacheKey)!;
 
   const promise = _doGenerate(intent, difficulty)
-    .then((data) => { scenarioCache.set(cacheKey, data); saveCacheToDisk(); return data; })
+    .then((data) => {
+      scenarioCache.set(cacheKey, data);
+      // Only persist plain-intent entries (no difficulty suffix) to shared cache
+      if (!difficulty) saveCacheToSupabase(intent, data).catch(() => {});
+      return data;
+    })
     .finally(() => generating.delete(cacheKey));
 
   generating.set(cacheKey, promise);
@@ -116,13 +117,14 @@ async function generateAndCache(intent: string, difficulty?: string): Promise<ob
 }
 
 async function warmCache() {
+  await loadCacheFromSupabase();
   for (const intent of KNOWN_INTENTS) {
     if (!scenarioCache.has(intent)) {
       await generateAndCache(intent).catch((e) =>
         console.error(`[cache] warm failed for "${intent}":`, e)
       );
+      await new Promise((r) => setTimeout(r, 2000));
     }
-    await new Promise((r) => setTimeout(r, 2000));
   }
   console.log("[cache] warm-up complete");
 }
@@ -146,6 +148,10 @@ scenarioRouter.post("/", async (req, res) => {
     if (force && !hasMemory) {
       const cacheKey = difficulty ? `${intent}::${difficulty}` : intent;
       scenarioCache.delete(cacheKey);
+      if (!difficulty && supabase) {
+        void supabase.from("pregenerated_scenarios")
+          .delete().eq("user_id", SHARED_USER).eq("intent", intent);
+      }
     }
     // Bypass shared cache for personalized requests so user-specific context is always fresh
     const data = hasMemory
