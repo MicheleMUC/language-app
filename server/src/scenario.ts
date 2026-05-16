@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { GoogleGenAI } from "@google/genai";
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 export const scenarioRouter = Router();
 
@@ -42,6 +44,35 @@ const scenarioCache = new Map<string, object>();
 // In-flight promise map to collapse concurrent identical requests
 const generating = new Map<string, Promise<object>>();
 
+const CACHE_FILE = join(__dirname, "../../scenario-cache.json");
+
+function loadCacheFromDisk() {
+  try {
+    const raw = readFileSync(CACHE_FILE, "utf-8");
+    const entries = JSON.parse(raw) as Record<string, object>;
+    for (const [key, val] of Object.entries(entries)) {
+      scenarioCache.set(key, val);
+    }
+    console.log(`[cache] loaded ${scenarioCache.size} scenarios from disk`);
+  } catch {
+    // File doesn't exist yet — start fresh
+  }
+}
+
+function saveCacheToDisk() {
+  try {
+    const entries: Record<string, object> = {};
+    for (const [key, val] of scenarioCache.entries()) {
+      entries[key] = val;
+    }
+    writeFileSync(CACHE_FILE, JSON.stringify(entries, null, 2));
+  } catch (e) {
+    console.error("[cache] failed to persist cache:", e);
+  }
+}
+
+loadCacheFromDisk();
+
 async function _doGenerate(
   intent: string,
   difficulty?: string,
@@ -77,7 +108,7 @@ async function generateAndCache(intent: string, difficulty?: string): Promise<ob
   if (generating.has(cacheKey)) return generating.get(cacheKey)!;
 
   const promise = _doGenerate(intent, difficulty)
-    .then((data) => { scenarioCache.set(cacheKey, data); return data; })
+    .then((data) => { scenarioCache.set(cacheKey, data); saveCacheToDisk(); return data; })
     .finally(() => generating.delete(cacheKey));
 
   generating.set(cacheKey, promise);
@@ -99,17 +130,23 @@ async function warmCache() {
 warmCache().catch(console.error);
 
 scenarioRouter.post("/", async (req, res) => {
-  const { intent, userId, difficulty, recentVocab, lastTip } = req.body as {
+  const { intent, userId, difficulty, recentVocab, lastTip, force } = req.body as {
     intent: string;
     userId: string;
     difficulty?: string;
     recentVocab?: string[];
     lastTip?: string;
+    force?: boolean;
   };
   if (!intent) return res.status(400).json({ error: "intent required" });
 
   try {
     const hasMemory = (recentVocab && recentVocab.length > 0) || !!lastTip;
+    // Force-evict cache entry so a fresh one is generated and persisted
+    if (force && !hasMemory) {
+      const cacheKey = difficulty ? `${intent}::${difficulty}` : intent;
+      scenarioCache.delete(cacheKey);
+    }
     // Bypass shared cache for personalized requests so user-specific context is always fresh
     const data = hasMemory
       ? await _doGenerate(intent, difficulty, recentVocab, lastTip) as Record<string, unknown>

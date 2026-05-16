@@ -40,3 +40,4 @@ server/.env
 # generated native folders
 /ios
 /android
+scenario-cache.json
