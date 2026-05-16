@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Switch } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { useStats } from "@/hooks/useStats";
 import { usePreferences } from "@/hooks/usePreferences";
+import type { FeedbackLayers } from "@/types";
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
@@ -19,7 +20,7 @@ const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { streak, todayMinutes, totalSessions, loading } = useStats(user?.id);
-  const { level, updateLevel } = usePreferences(user?.id);
+  const { level, feedbackLayers, updateLevel, updateFeedbackLayer } = usePreferences(user?.id);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -92,6 +93,30 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          <Text style={styles.sectionLabel}>FEEDBACK</Text>
+          <View style={styles.feedbackSection}>
+            {(
+              [
+                { key: "microfeedback", label: "Correzione per turno", desc: "Piccola correzione dopo ogni tua risposta" },
+                { key: "endSession", label: "Analisi fine sessione", desc: "Riepilogo completo a fine conversazione" },
+                { key: "naturalCorrection", label: "Correzione naturale", desc: "L'AI modella la forma corretta nelle risposte" },
+              ] as { key: keyof FeedbackLayers; label: string; desc: string }[]
+            ).map(({ key, label, desc }) => (
+              <View key={key} style={styles.feedbackRow}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.feedbackLabel}>{label}</Text>
+                  <Text style={styles.feedbackDesc}>{desc}</Text>
+                </View>
+                <Switch
+                  value={feedbackLayers[key]}
+                  onValueChange={(v) => updateFeedbackLayer(key, v)}
+                  trackColor={{ false: "#353534", true: "#ff6d33" }}
+                  thumbColor="#e5e2e1"
+                />
+              </View>
+            ))}
           </View>
 
           <TouchableOpacity
@@ -183,6 +208,25 @@ const styles = StyleSheet.create({
     color: "#e1bfb4",
     letterSpacing: 1,
   },
+  feedbackSection: {
+    backgroundColor: "#201f1f",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#353534",
+    marginBottom: 32,
+    overflow: "hidden",
+  },
+  feedbackRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#353534",
+    gap: 12,
+  },
+  feedbackLabel: { fontSize: 14, fontWeight: "600", color: "#e5e2e1" },
+  feedbackDesc: { fontSize: 12, color: "#a88a80" },
   signOutBtn: {
     backgroundColor: "#201f1f",
     borderRadius: 50,

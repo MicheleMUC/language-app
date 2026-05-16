@@ -50,6 +50,22 @@ export interface ConversationSession {
   feedback?: SessionFeedback;
 }
 
+export interface TurnFeedback {
+  ok: boolean;
+  correction?: {
+    original: string;
+    corrected: string;
+    explanation: string;
+  };
+  praise?: string;
+}
+
+export interface FeedbackLayers {
+  microfeedback: boolean;
+  endSession: boolean;
+  naturalCorrection: boolean;
+}
+
 export interface SidekickMessage {
   question: string;
   answer: string;

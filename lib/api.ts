@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import type { Scenario, ConversationTurn, SessionFeedback } from "@/types";
+import type { Scenario, ConversationTurn, SessionFeedback, TurnFeedback } from "@/types";
 
 function getServerBase(): string {
   if (process.env.EXPO_PUBLIC_SERVER_URL) return process.env.EXPO_PUBLIC_SERVER_URL;
@@ -37,6 +37,21 @@ export async function querySidekick(
   if (!res.ok) throw new Error(`Sidekick query failed: ${res.status}`);
   const data = await res.json();
   return data.answer as string;
+}
+
+export async function requestTurnFeedback(
+  italian: string,
+  scenario: { difficulty: string; characterName: string },
+  userLevel: string
+): Promise<TurnFeedback> {
+  const base = getServerBase();
+  const res = await fetch(`${base}/feedback/turn`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ italian, scenario, userLevel }),
+  });
+  if (!res.ok) return { ok: true };
+  return res.json();
 }
 
 export async function requestFeedback(

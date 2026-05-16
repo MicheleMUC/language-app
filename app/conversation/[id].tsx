@@ -17,10 +17,11 @@ import { Sidekick } from "@/components/Sidekick";
 import { useConversation } from "@/hooks/useConversation";
 import { useSidekick } from "@/hooks/useSidekick";
 import { usePreferences } from "@/hooks/usePreferences";
+import { TurnFeedbackCard } from "@/components/TurnFeedbackCard";
 import { saveSession, upsertVocabulary, updateSessionFeedback } from "@/lib/supabase";
-import { requestFeedback } from "@/lib/api";
+import { requestFeedback, requestTurnFeedback } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Scenario, ConversationTurn, VocabItem, SessionFeedback } from "@/types";
+import type { Scenario, ConversationTurn, VocabItem, SessionFeedback, TurnFeedback } from "@/types";
 
 function PulseRings() {
   const scale1 = useRef(new Animated.Value(1)).current;
@@ -264,10 +265,11 @@ export default function ConversationScreen() {
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
 
   const { user } = useAuth();
-  const { level } = usePreferences(user?.id);
+  const { level, feedbackLayers } = usePreferences(user?.id);
   const [showSidekick, setShowSidekick] = useState(false);
   const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [turnFeedback, setTurnFeedback] = useState<TurnFeedback | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
   const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario);
@@ -323,7 +325,7 @@ export default function ConversationScreen() {
     upsertVocabulary(userId, currentVocab).catch(() => {});
 
     const userTurnCount = currentTurns.filter((t) => t.role === "user").length;
-    if (userTurnCount >= 1) {
+    if (userTurnCount >= 1 && feedbackLayers.endSession) {
       setFeedbackLoading(true);
       requestFeedback(currentTurns, scenario, level)
         .then((fb) => {
@@ -335,7 +337,7 @@ export default function ConversationScreen() {
         .catch(() => {})
         .finally(() => setFeedbackLoading(false));
     }
-  }, [id, user, scenario, level]);
+  }, [id, user, scenario, level, feedbackLayers.endSession]);
 
   // Capture current turns/vocab in a ref so the effect below always sees fresh values
   const turnsRef = useRef(turns);
@@ -350,6 +352,21 @@ export default function ConversationScreen() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  // Fire per-turn micro-feedback when a new user transcript arrives
+  useEffect(() => {
+    if (!lastUserTranscript || !feedbackLayers.microfeedback) return;
+    setTurnFeedback(null);
+    requestTurnFeedback(lastUserTranscript, scenario, level)
+      .then((fb) => {
+        if (fb.ok && !fb.praise) return; // nothing interesting to show
+        setTurnFeedback(fb);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUserTranscript]);
+
+  const dismissTurnFeedback = useCallback(() => setTurnFeedback(null), []);
 
   const handleEnd = useCallback(async () => {
     await end();
@@ -464,6 +481,15 @@ export default function ConversationScreen() {
           {isConnected && !isTalking && !!lastUserTranscript && (
             <View style={styles.hoSentitoPill}>
               <Text style={styles.hoSentitoText}>Ho sentito: «{lastUserTranscript}»</Text>
+            </View>
+          )}
+
+          {isConnected && !isTalking && (
+            <View style={styles.turnFeedbackWrap}>
+              <TurnFeedbackCard
+                feedback={turnFeedback}
+                onDismiss={dismissTurnFeedback}
+              />
             </View>
           )}
         </View>
@@ -687,6 +713,7 @@ const styles = StyleSheet.create({
     maxWidth: "90%",
   },
   hoSentitoText: { fontSize: 13, color: "#e1bfb4", textAlign: "center", fontStyle: "italic", opacity: 0.75 },
+  turnFeedbackWrap: { marginTop: 8, alignItems: "flex-start", paddingHorizontal: 4 },
   repeatBtn: { backgroundColor: "#ff6d33", borderRadius: 50, paddingVertical: 20, alignItems: "center", marginBottom: 16 },
   repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#5f1b00" },
   homeBtn: { backgroundColor: "#353534", borderRadius: 50, paddingVertical: 20, alignItems: "center", borderWidth: 1, borderColor: "#594139" },
