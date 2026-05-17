@@ -4,7 +4,11 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { useStats } from "@/hooks/useStats";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useLearnerProfile } from "@/hooks/useLearnerProfile";
+import { GrammarProgressBar } from "@/components/GrammarProgressBar";
 import type { FeedbackLayers } from "@/types";
+
+const MIN_SESSIONS_FOR_GRAMMAR = 3;
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
@@ -21,6 +25,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { streak, todayMinutes, totalSessions, loading } = useStats(user?.id);
   const { level, feedbackLayers, updateLevel, updateFeedbackLayer } = usePreferences(user?.id);
+  const { profile: learnerProfile } = useLearnerProfile(user?.id);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -71,6 +76,41 @@ export default function ProfileScreen() {
               <Text style={styles.statLabel}>Conversazioni</Text>
             </View>
           </View>
+
+          <Text style={styles.sectionLabel}>I MIEI PROGRESSI GRAMMATICALI</Text>
+          {(() => {
+            if (loading) return null;
+            if (totalSessions < MIN_SESSIONS_FOR_GRAMMAR) {
+              return (
+                <View style={styles.grammarEmpty}>
+                  <Text style={styles.grammarEmptyText}>
+                    Completa {MIN_SESSIONS_FOR_GRAMMAR} conversazioni per vedere i tuoi progressi grammaticali.
+                  </Text>
+                  <Text style={styles.grammarEmptyCount}>
+                    {totalSessions}/{MIN_SESSIONS_FOR_GRAMMAR} completate
+                  </Text>
+                </View>
+              );
+            }
+            const entries = Object.entries(learnerProfile?.weaknessMap ?? {});
+            if (entries.length === 0) {
+              return (
+                <View style={styles.grammarEmpty}>
+                  <Text style={styles.grammarEmptyText}>
+                    I tuoi progressi grammaticali appariranno dopo la prossima sessione.
+                  </Text>
+                </View>
+              );
+            }
+            const sorted = [...entries].sort((a, b) => a[1] - b[1]);
+            return (
+              <View style={styles.grammarCard}>
+                {sorted.map(([cat, score]) => (
+                  <GrammarProgressBar key={cat} category={cat} score={score} />
+                ))}
+              </View>
+            );
+          })()}
 
           <Text style={styles.sectionLabel}>IL MIO LIVELLO</Text>
           <View style={styles.levelRow}>
@@ -242,6 +282,26 @@ const styles = StyleSheet.create({
   },
   feedbackLabel: { fontSize: 14, fontWeight: "600", color: "#e5e2e1" },
   feedbackDesc: { fontSize: 12, color: "#a88a80" },
+  grammarCard: {
+    backgroundColor: "#201f1f",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#353534",
+    padding: 20,
+    gap: 16,
+    marginBottom: 32,
+  },
+  grammarEmpty: {
+    backgroundColor: "#201f1f",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#353534",
+    padding: 20,
+    gap: 8,
+    marginBottom: 32,
+  },
+  grammarEmptyText: { fontSize: 14, color: "#a88a80", lineHeight: 20 },
+  grammarEmptyCount: { fontSize: 13, fontWeight: "700", color: "#594139" },
   signOutBtn: {
     backgroundColor: "#201f1f",
     borderRadius: 50,

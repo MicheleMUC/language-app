@@ -66,7 +66,8 @@ async function _doGenerate(
   intent: string,
   difficulty?: string,
   recentVocab?: string[],
-  lastTip?: string
+  lastTip?: string,
+  grammarFocus?: string,
 ): Promise<object> {
   console.log(`[cache] generating intent: ${intent}${difficulty ? ` at ${difficulty}` : ""}`);
   const difficultyInstruction = difficulty
@@ -78,6 +79,9 @@ async function _doGenerate(
   }
   if (lastTip) {
     memoryInstruction += `\n\nThe learner's coach last noted: "${lastTip}". Design the scenario so this grammar point comes up naturally in conversation.`;
+  }
+  if (grammarFocus) {
+    memoryInstruction += `\n\nGRAMMAR FOCUS: Naturally create 2-3 situations in the scenario where the learner will need to use ${grammarFocus}. Design the character's questions and the scenario's context to elicit this grammar point.`;
   }
   const result = await ai.models.generateContent({
     model: "gemini-2.0-flash",
@@ -125,18 +129,19 @@ async function warmCache() {
 warmCache().catch(console.error);
 
 scenarioRouter.post("/", async (req, res) => {
-  const { intent, userId, difficulty, recentVocab, lastTip, force } = req.body as {
+  const { intent, userId, difficulty, recentVocab, lastTip, force, grammarFocus } = req.body as {
     intent: string;
     userId: string;
     difficulty?: string;
     recentVocab?: string[];
     lastTip?: string;
     force?: boolean;
+    grammarFocus?: string;
   };
   if (!intent) return res.status(400).json({ error: "intent required" });
 
   try {
-    const hasMemory = (recentVocab && recentVocab.length > 0) || !!lastTip;
+    const hasMemory = (recentVocab && recentVocab.length > 0) || !!lastTip || !!grammarFocus;
     // Force-evict cache entry so a fresh one is generated and persisted
     if (force && !hasMemory) {
       const cacheKey = difficulty ? `${intent}::${difficulty}` : intent;
@@ -148,7 +153,7 @@ scenarioRouter.post("/", async (req, res) => {
     }
     // Bypass shared cache for personalized requests so user-specific context is always fresh
     const data = hasMemory
-      ? await _doGenerate(intent, difficulty, recentVocab, lastTip) as Record<string, unknown>
+      ? await _doGenerate(intent, difficulty, recentVocab, lastTip, grammarFocus) as Record<string, unknown>
       : await generateAndCache(intent, difficulty) as Record<string, unknown>;
 
     res.json({

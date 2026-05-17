@@ -12,12 +12,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ScenarioCard } from "@/components/ScenarioCard";
+import { SuggestedScenarioCard } from "@/components/SuggestedScenarioCard";
 import { FloatingNav } from "@/components/FloatingNav";
 import { generateScenario } from "@/lib/api";
 import { saveScenario, loadRecentVocab, loadRecentFeedback } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { useStats } from "@/hooks/useStats";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useLearnerProfile } from "@/hooks/useLearnerProfile";
 import type { Scenario } from "@/types";
 
 const SUGGESTED = [
@@ -61,6 +63,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { streak, todayMinutes, loading: statsLoading } = useStats(user?.id);
   const { level } = usePreferences(user?.id);
+  const { profile: learnerProfile } = useLearnerProfile(user?.id);
   const memoryRef = useRef<{ recentVocab: string[]; lastTip?: string }>({ recentVocab: [] });
 
   useEffect(() => {
@@ -70,12 +73,12 @@ export default function HomeScreen() {
     ).catch(() => {});
   }, [user?.id]);
 
-  const handleSubmit = async (customIntent?: string) => {
+  const handleSubmit = async (customIntent?: string, grammarFocus?: string) => {
     const trimmed = (customIntent ?? intent).trim();
     if (!trimmed || loading) return;
     setLoading(true);
     try {
-      const generated = await generateScenario(trimmed, user?.id ?? "", level, memoryRef.current);
+      const generated = await generateScenario(trimmed, user?.id ?? "", level, memoryRef.current, grammarFocus);
       const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {
@@ -204,6 +207,15 @@ export default function HomeScreen() {
                 <Text style={styles.randomTitle}>Genera Scenario Casuale</Text>
                 <Text style={styles.randomSub}>Lasciati sorprendere dall'IA</Text>
               </TouchableOpacity>
+
+              {/* Suggested for you — only shown when learner profile has weakness data */}
+              {learnerProfile && Object.keys(learnerProfile.weaknessMap).length > 0 && (
+                <SuggestedScenarioCard
+                  weaknessMap={learnerProfile.weaknessMap}
+                  loading={loading}
+                  onPress={(intentStr, grammarFocusStr) => handleSubmit(intentStr, grammarFocusStr)}
+                />
+              )}
             </View>
           </View>
 
