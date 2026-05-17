@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import type { Scenario, ConversationTurn, SessionFeedback, TurnFeedback } from "@/types";
+import type { CurriculumScenario, Scenario, ConversationTurn, SessionFeedback, TurnFeedback } from "@/types";
 
 function getServerBase(): string {
   if (process.env.EXPO_PUBLIC_SERVER_URL) return process.env.EXPO_PUBLIC_SERVER_URL;
@@ -63,6 +63,21 @@ export async function requestTurnFeedback(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function generateCurriculum(
+  destination: string,
+  tripDate: string | undefined,
+  userLevel: string,
+): Promise<{ scenarios: CurriculumScenario[]; grammarMilestones: string[]; estimatedWeeks: number }> {
+  const base = getServerBase();
+  const res = await fetch(`${base}/curriculum`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination, tripDate, userLevel }),
+  });
+  if (!res.ok) throw new Error(`Curriculum generation failed: ${res.status}`);
+  return res.json();
 }
 
 export async function requestFeedback(

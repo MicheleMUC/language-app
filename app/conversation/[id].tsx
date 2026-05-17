@@ -22,7 +22,7 @@ import { saveSession, upsertVocabulary, updateSessionFeedback } from "@/lib/supa
 import { requestFeedback, requestTurnFeedback } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useLearnerProfile } from "@/hooks/useLearnerProfile";
-import type { Scenario, ConversationTurn, LearnerContext, VocabItem, SessionFeedback, TurnFeedback } from "@/types";
+import type { Scenario, ConversationTurn, LearnerContext, PronunciationIssue, VocabItem, SessionFeedback, TurnFeedback } from "@/types";
 
 function PulseRings() {
   const scale1 = useRef(new Animated.Value(1)).current;
@@ -175,11 +175,30 @@ function TranscriptSection({ turns }: { turns: ConversationTurn[] }) {
   );
 }
 
+function PronunciationCard({ issues }: { issues: PronunciationIssue[] }) {
+  if (issues.length === 0) return null;
+  return (
+    <View style={styles.pronunciationCard}>
+      <Text style={styles.pronunciationLabel}>PRONUNCIA</Text>
+      <View style={{ gap: 12 }}>
+        {issues.map((issue, i) => (
+          <View key={i} style={styles.pronunciationRow}>
+            <Text style={styles.pronunciationPhoneme}>/{issue.phoneme}/</Text>
+            <Text style={styles.pronunciationExample}>"{issue.example}"</Text>
+            <Text style={styles.pronunciationTip}>{issue.tip}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function SessionReview({
   turns,
   newVocabulary,
   feedback,
   feedbackLoading,
+  pronunciationIssues,
   onRepeat,
   onHome,
 }: {
@@ -187,6 +206,7 @@ function SessionReview({
   newVocabulary: VocabItem[];
   feedback: SessionFeedback | null;
   feedbackLoading: boolean;
+  pronunciationIssues: PronunciationIssue[];
   onRepeat: () => void;
   onHome: () => void;
 }) {
@@ -224,6 +244,9 @@ function SessionReview({
 
         {/* Grammar corrections */}
         {!feedbackLoading && feedback && <CorrectionsCard feedback={feedback} />}
+
+        {/* Pronunciation feedback */}
+        {pronunciationIssues.length > 0 && <PronunciationCard issues={pronunciationIssues} />}
 
         {/* Encountered vocabulary */}
         {newVocabulary.length > 0 && (
@@ -278,7 +301,7 @@ export default function ConversationScreen() {
     ? { userContext: learnerProfile.userContext, vocabToReuse: learnerProfile.vocabToReuse, weaknessMap: learnerProfile.weaknessMap }
     : undefined;
 
-  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection }, learnerContext, sessionGoal ?? undefined);
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, pronunciationIssues, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection, pronunciationFeedback: feedbackLayers.pronunciationFeedback }, learnerContext, sessionGoal ?? undefined);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const newVocabulary = useMemo((): VocabItem[] =>
@@ -561,6 +584,7 @@ export default function ConversationScreen() {
           newVocabulary={newVocabulary}
           feedback={feedback}
           feedbackLoading={feedbackLoading}
+          pronunciationIssues={pronunciationIssues}
           onRepeat={handleRepeat}
           onHome={handleHome}
         />
@@ -820,6 +844,20 @@ const styles = StyleSheet.create({
   patternGoodText: { flex: 1, fontSize: 13, color: "#66d17a", lineHeight: 19 },
   patternImproveDot: { fontSize: 13, color: "#dcc841", fontWeight: "700", marginTop: 1 },
   patternImproveText: { flex: 1, fontSize: 13, color: "#dcc841", lineHeight: 19 },
+  pronunciationCard: {
+    backgroundColor: "#1a1520",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: "#53397c",
+    gap: 12,
+  },
+  pronunciationLabel: { fontSize: 11, fontWeight: "700", color: "#d6baff", letterSpacing: 3, textTransform: "uppercase" },
+  pronunciationRow: { gap: 4 },
+  pronunciationPhoneme: { fontSize: 14, fontWeight: "700", color: "#d6baff" },
+  pronunciationExample: { fontSize: 14, color: "#e5e2e1", fontStyle: "italic" },
+  pronunciationTip: { fontSize: 13, color: "#a88a80", lineHeight: 18 },
   errorOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#131313",

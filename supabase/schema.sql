@@ -66,6 +66,21 @@ create table if not exists pregenerated_scenarios (
 
 create index if not exists pregen_user on pregenerated_scenarios (user_id);
 
+-- learning_goals: one active goal per user (trip prep curriculum)
+create table if not exists learning_goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  destination text not null,
+  trip_date text,
+  curriculum jsonb not null default '[]',
+  grammar_milestones jsonb not null default '[]',
+  estimated_weeks int not null default 4,
+  completed_intents text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists learning_goals_user on learning_goals (user_id, created_at desc);
+
 -- learner_profile: one row per user, updated after each session
 create table if not exists learner_profile (
   id uuid primary key default gen_random_uuid(),

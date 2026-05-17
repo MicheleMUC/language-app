@@ -12,6 +12,7 @@ import { scenarioRouter } from "./scenario";
 import { sidekickRouter } from "./sidekick";
 import { feedbackRouter } from "./feedback";
 import { feedbackTurnRouter } from "./feedback-turn";
+import { curriculumRouter } from "./curriculum";
 import { handleConversationWs } from "./gemini-relay";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use("/scenario", scenarioRouter);
 app.use("/sidekick", sidekickRouter);
 app.use("/feedback/turn", feedbackTurnRouter);
 app.use("/feedback", feedbackRouter);
+app.use("/curriculum", curriculumRouter);
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });

@@ -1,6 +1,7 @@
 import type { WebSocket } from "ws";
 import { spawn } from "child_process";
 import { ai } from "./ai-client";
+import { analyzePronunciation } from "./pronunciation";
 
 type CapturedAudio = { data: string; mimeType: string };
 
@@ -11,7 +12,7 @@ type LearnerCtx = {
 };
 
 type ClientMsg =
-  | { type: "start"; scenarioId: string; scenario: Record<string, unknown>; preferences?: { naturalCorrection?: boolean }; learnerContext?: LearnerCtx; sessionGoal?: string }
+  | { type: "start"; scenarioId: string; scenario: Record<string, unknown>; preferences?: { naturalCorrection?: boolean; pronunciationFeedback?: boolean }; learnerContext?: LearnerCtx; sessionGoal?: string }
   | { type: "talk_start" }
   | { type: "talk_end"; audio: CapturedAudio }
   | { type: "talk_cancel" }
@@ -145,6 +146,7 @@ ${phrases || "(none specified)"}${learnerBlock}${goalBlock}`;
 export function handleConversationWs(ws: WebSocket) {
   let activeScenarioId: string | null = null;
   let active = true;
+  let pronunciationEnabled = false;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let session: any = null;
 
@@ -228,6 +230,8 @@ export function handleConversationWs(ws: WebSocket) {
           activeScenarioSockets.set(scenarioId, ws);
         }
 
+        pronunciationEnabled = msg.preferences?.pronunciationFeedback ?? false;
+
         const systemInstruction = buildSystemInstruction(
           msg.scenario,
           msg.preferences?.naturalCorrection ?? true,
@@ -298,11 +302,22 @@ export function handleConversationWs(ws: WebSocket) {
         }
         try {
           console.log("[relay] talk_end -> transcoding to PCM and sending to Live API");
+          // Save pre-transcoded audio for pronunciation analysis before transcoding
+          const originalAudio = msg.audio;
           const pcm = await transcodeToPcm(msg.audio);
 
           // SDK expects a plain object with mimeType+data, not a native Blob
           session.sendRealtimeInput({ audio: { mimeType: "audio/pcm;rate=16000", data: pcm.toString("base64") } });
           session.sendRealtimeInput({ activityEnd: {} });
+
+          // Parallel pronunciation analysis — fire-and-forget, 3s timeout built into analyzePronunciation
+          if (pronunciationEnabled) {
+            analyzePronunciation(originalAudio.data, originalAudio.mimeType)
+              .then((issues) => {
+                if (issues.length > 0) send({ type: "pronunciation_feedback", issues });
+              })
+              .catch(() => {});
+          }
         } catch (e) {
           console.error("talk_end error:", e);
           send({ type: "turn_error", message: "I could not process your audio - please try again" });

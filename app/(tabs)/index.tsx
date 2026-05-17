@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { useStats } from "@/hooks/useStats";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useLearnerProfile } from "@/hooks/useLearnerProfile";
+import { useGoal } from "@/hooks/useGoal";
 import type { Scenario } from "@/types";
 
 const SUGGESTED = [
@@ -64,6 +65,7 @@ export default function HomeScreen() {
   const { streak, todayMinutes, loading: statsLoading } = useStats(user?.id);
   const { level } = usePreferences(user?.id);
   const { profile: learnerProfile } = useLearnerProfile(user?.id);
+  const { goal } = useGoal(user?.id);
   const memoryRef = useRef<{ recentVocab: string[]; lastTip?: string }>({ recentVocab: [] });
 
   useEffect(() => {
@@ -236,6 +238,43 @@ export default function HomeScreen() {
               <Text style={styles.streakLabel}>Day Streak</Text>
             </View>
           </View>
+
+          {/* Trip prep card */}
+          <TouchableOpacity
+            onPress={() => router.push("/goals")}
+            style={styles.tripCard}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.tripCardEmoji}>✈️</Text>
+            <View style={{ flex: 1, gap: 4 }}>
+              {goal ? (
+                <>
+                  <Text style={styles.tripCardTitle}>{goal.destination}</Text>
+                  <Text style={styles.tripCardSub}>
+                    {goal.completedIntents.length}/{goal.scenarios.length} scenari completati
+                  </Text>
+                  <View style={styles.tripCardTrack}>
+                    <View
+                      style={[
+                        styles.tripCardFill,
+                        {
+                          width: goal.scenarios.length > 0
+                            ? `${(goal.completedIntents.length / goal.scenarios.length) * 100}%` as `${number}%`
+                            : "0%",
+                        },
+                      ]}
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.tripCardTitle}>Prepara il viaggio</Text>
+                  <Text style={styles.tripCardSub}>Crea un curriculum per la tua destinazione</Text>
+                </>
+              )}
+            </View>
+            <Text style={styles.tripCardArrow}>→</Text>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
 
@@ -354,4 +393,22 @@ const styles = StyleSheet.create({
   streak: { alignItems: "center" },
   streakNum: { fontSize: 28, fontWeight: "800", color: "#ffb59b" },
   streakLabel: { fontSize: 11, fontWeight: "700", color: "#e1bfb4" },
+  tripCard: {
+    marginHorizontal: 24,
+    marginTop: 12,
+    backgroundColor: "#1c1b1b",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#53397c",
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  tripCardEmoji: { fontSize: 28 },
+  tripCardTitle: { fontSize: 15, fontWeight: "700", color: "#d6baff" },
+  tripCardSub: { fontSize: 12, color: "#a88a80" },
+  tripCardArrow: { fontSize: 18, color: "#53397c", fontWeight: "700" },
+  tripCardTrack: { height: 6, backgroundColor: "#2a2a2a", borderRadius: 3, overflow: "hidden", marginTop: 6 },
+  tripCardFill: { height: "100%", backgroundColor: "#53397c", borderRadius: 3 },
 });

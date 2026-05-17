@@ -158,6 +158,22 @@ export default function ProfileScreen() {
             ))}
           </View>
 
+          <Text style={styles.sectionLabel}>PRONUNCIA</Text>
+          <View style={[styles.feedbackSection, { marginBottom: 32 }]}>
+            <View style={[styles.feedbackRow, { borderBottomWidth: 0 }]}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.feedbackLabel}>Feedback sulla pronuncia</Text>
+                <Text style={styles.feedbackDesc}>Analisi fonetica dopo ogni turno (sperimentale)</Text>
+              </View>
+              <Switch
+                value={feedbackLayers.pronunciationFeedback}
+                onValueChange={(v) => updateFeedbackLayer("pronunciationFeedback", v)}
+                trackColor={{ false: "#353534", true: "#53397c" }}
+                thumbColor="#e5e2e1"
+              />
+            </View>
+          </View>
+
           <Text style={styles.sectionLabel}>COMPORTAMENTO AI</Text>
           <View style={styles.feedbackSection}>
             <View style={styles.feedbackRow}>
@@ -173,6 +189,19 @@ export default function ProfileScreen() {
               />
             </View>
           </View>
+
+          <TouchableOpacity
+            onPress={() => router.push("/goals")}
+            style={styles.tripBtn}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.tripBtnEmoji}>✈️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tripBtnTitle}>Prepara il tuo viaggio</Text>
+              <Text style={styles.tripBtnSub}>Curriculum personalizzato per la tua destinazione</Text>
+            </View>
+            <Text style={styles.tripBtnArrow}>→</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleSignOut}
@@ -302,6 +331,22 @@ const styles = StyleSheet.create({
   },
   grammarEmptyText: { fontSize: 14, color: "#a88a80", lineHeight: 20 },
   grammarEmptyCount: { fontSize: 13, fontWeight: "700", color: "#594139" },
+  tripBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1c1b1b",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#53397c",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    gap: 14,
+    marginBottom: 16,
+  },
+  tripBtnEmoji: { fontSize: 28 },
+  tripBtnTitle: { fontSize: 15, fontWeight: "700", color: "#d6baff", marginBottom: 2 },
+  tripBtnSub: { fontSize: 12, color: "#a88a80" },
+  tripBtnArrow: { fontSize: 18, color: "#53397c", fontWeight: "700" },
   signOutBtn: {
     backgroundColor: "#201f1f",
     borderRadius: 50,

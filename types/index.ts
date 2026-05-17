@@ -64,6 +64,32 @@ export interface FeedbackLayers {
   microfeedback: boolean;
   endSession: boolean;
   naturalCorrection: boolean;
+  pronunciationFeedback: boolean;
+}
+
+export interface PronunciationIssue {
+  phoneme: string;
+  example: string;
+  tip: string;
+}
+
+export interface CurriculumScenario {
+  title: string;
+  intent: string;
+  grammarFocus: string;
+  difficulty: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+}
+
+export interface LearningGoal {
+  id: string;
+  userId: string;
+  destination: string;
+  tripDate?: string;
+  scenarios: CurriculumScenario[];
+  grammarMilestones: string[];
+  estimatedWeeks: number;
+  completedIntents: string[];
+  createdAt: string;
 }
 
 export interface SidekickMessage {
@@ -119,7 +145,7 @@ export interface LearnerContext {
 
 // WebSocket message types between app and Cloud Run relay
 export type WsClientMessage =
-  | { type: "start"; scenarioId: string; scenario: Scenario; preferences?: { naturalCorrection?: boolean }; learnerContext?: LearnerContext; sessionGoal?: string }
+  | { type: "start"; scenarioId: string; scenario: Scenario; preferences?: { naturalCorrection?: boolean; pronunciationFeedback?: boolean }; learnerContext?: LearnerContext; sessionGoal?: string }
   | { type: "talk_start" }
   | { type: "talk_end"; audio: CapturedAudio }
   | { type: "talk_cancel" }
@@ -133,4 +159,5 @@ export type WsServerMessage =
   | { type: "vocab_hint"; item: VocabItem }
   | { type: "interrupt" }
   | { type: "turn_error"; message: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "pronunciation_feedback"; issues: PronunciationIssue[] };

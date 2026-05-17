@@ -9,6 +9,7 @@ const DEFAULT_FEEDBACK_LAYERS: FeedbackLayers = {
   microfeedback: true,
   endSession: true,
   naturalCorrection: true,
+  pronunciationFeedback: false,
 };
 
 export function usePreferences(userId: string | undefined) {

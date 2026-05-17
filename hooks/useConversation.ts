@@ -2,11 +2,11 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
-import type { ConversationTurn, LearnerContext, Scenario, VocabItem, WsServerMessage } from "@/types";
+import type { ConversationTurn, LearnerContext, PronunciationIssue, Scenario, VocabItem, WsServerMessage } from "@/types";
 
 type Status = "idle" | "connecting" | "active" | "thinking" | "talking" | "ended";
 
-export function useConversation(scenario: Scenario, preferences?: { naturalCorrection?: boolean }, learnerContext?: LearnerContext, sessionGoal?: string) {
+export function useConversation(scenario: Scenario, preferences?: { naturalCorrection?: boolean; pronunciationFeedback?: boolean }, learnerContext?: LearnerContext, sessionGoal?: string) {
   const [status, setStatus] = useState<Status>("idle");
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [partialTranscript, setPartialTranscript] = useState("");
@@ -14,6 +14,7 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pronunciationIssues, setPronunciationIssues] = useState<PronunciationIssue[]>([]);
   const socketRef = useRef<ConversationSocket | null>(null);
   const startedRef = useRef(false); // guard against Strict Mode double-invocation
   const startTokenRef = useRef(0);
@@ -117,6 +118,9 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
           setErrorMessage(msg.message ?? "Connection error");
           setStatus("ended");
           break;
+        case "pronunciation_feedback":
+          setPronunciationIssues((prev) => [...prev, ...msg.issues].slice(-4));
+          break;
       }
     },
     [playAudio, player]
@@ -206,6 +210,7 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
     activeVocab,
     lastLatencyMs,
     errorMessage,
+    pronunciationIssues,
     isModelSpeaking: playerStatus.playing,
     start,
     startTalking,

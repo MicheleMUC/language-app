@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Scenario, ConversationSession, VocabItem, SessionFeedback, LearnerProfile, VocabEntry, WeaknessMap, UserContext } from "@/types";
+import type { Scenario, ConversationSession, CurriculumScenario, LearningGoal, VocabItem, SessionFeedback, LearnerProfile, VocabEntry, WeaknessMap, UserContext } from "@/types";
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -198,6 +198,69 @@ export async function upsertPregenScenario(
 export async function deletePregenScenario(userId: string, intent: string): Promise<void> {
   if (!supabase) return;
   await supabase.from("pregenerated_scenarios").delete().eq("user_id", userId).eq("intent", intent);
+}
+
+// ── Learning goals (trip prep) ────────────────────────────────────────────────
+
+export async function saveGoal(goal: Omit<LearningGoal, "id" | "createdAt" | "completedIntents">): Promise<LearningGoal | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("learning_goals")
+    .insert({
+      user_id: goal.userId,
+      destination: goal.destination,
+      trip_date: goal.tripDate ?? null,
+      curriculum: goal.scenarios,
+      grammar_milestones: goal.grammarMilestones,
+      estimated_weeks: goal.estimatedWeeks,
+      completed_intents: [],
+    })
+    .select("*")
+    .single();
+  if (error || !data) return null;
+  return rowToGoal(data);
+}
+
+export async function loadActiveGoal(userId: string): Promise<LearningGoal | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("learning_goals")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) return null;
+  return rowToGoal(data);
+}
+
+export async function markScenarioComplete(goalId: string, intent: string): Promise<void> {
+  if (!supabase) return;
+  const { data } = await supabase
+    .from("learning_goals")
+    .select("completed_intents")
+    .eq("id", goalId)
+    .single();
+  const current: string[] = (data?.completed_intents as string[]) ?? [];
+  if (current.includes(intent)) return;
+  await supabase
+    .from("learning_goals")
+    .update({ completed_intents: [...current, intent] })
+    .eq("id", goalId);
+}
+
+function rowToGoal(row: Record<string, unknown>): LearningGoal {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    destination: row.destination as string,
+    tripDate: (row.trip_date as string | null) ?? undefined,
+    scenarios: (row.curriculum as CurriculumScenario[]) ?? [],
+    grammarMilestones: (row.grammar_milestones as string[]) ?? [],
+    estimatedWeeks: (row.estimated_weeks as number) ?? 4,
+    completedIntents: (row.completed_intents as string[]) ?? [],
+    createdAt: row.created_at as string,
+  };
 }
 
 // ── Learner profile ───────────────────────────────────────────────────────────
