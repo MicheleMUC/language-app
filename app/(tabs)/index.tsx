@@ -78,7 +78,8 @@ export default function HomeScreen() {
     if (!trimmed || loading) return;
     setLoading(true);
     try {
-      const generated = await generateScenario(trimmed, user?.id ?? "", level, memoryRef.current, grammarFocus);
+      const vocabToReuse = (learnerProfile?.vocabToReuse ?? []).slice(0, 5).map((v) => v.word);
+      const generated = await generateScenario(trimmed, user?.id ?? "", level, memoryRef.current, grammarFocus, vocabToReuse.length > 0 ? vocabToReuse : undefined);
       const id = await saveScenario(generated).catch(() => `local_${Date.now()}`);
       setScenario({ ...generated, id });
     } catch {
@@ -95,7 +96,7 @@ export default function HomeScreen() {
         onBack={() => setScenario(null)}
         onStart={() =>
           router.push(
-            `/conversation/${scenario.id}?scenarioData=${encodeURIComponent(JSON.stringify(scenario))}`
+            `/pre-session?scenarioId=${scenario.id}&scenarioData=${encodeURIComponent(JSON.stringify(scenario))}&characterName=${encodeURIComponent(scenario.characterName)}&setting=${encodeURIComponent(scenario.setting)}`
           )
         }
       />

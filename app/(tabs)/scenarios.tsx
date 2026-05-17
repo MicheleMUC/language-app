@@ -186,7 +186,7 @@ export default function ScenariosScreen() {
         onBack={() => setScenario(null)}
         onStart={() =>
           router.push(
-            `/conversation/${scenario.id}?scenarioData=${encodeURIComponent(JSON.stringify(scenario))}`
+            `/pre-session?scenarioId=${scenario.id}&scenarioData=${encodeURIComponent(JSON.stringify(scenario))}&characterName=${encodeURIComponent(scenario.characterName)}&setting=${encodeURIComponent(scenario.setting)}`
           )
         }
       />

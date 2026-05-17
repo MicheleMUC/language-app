@@ -68,6 +68,7 @@ async function _doGenerate(
   recentVocab?: string[],
   lastTip?: string,
   grammarFocus?: string,
+  vocabToReuse?: string[],
 ): Promise<object> {
   console.log(`[cache] generating intent: ${intent}${difficulty ? ` at ${difficulty}` : ""}`);
   const difficultyInstruction = difficulty
@@ -82,6 +83,9 @@ async function _doGenerate(
   }
   if (grammarFocus) {
     memoryInstruction += `\n\nGRAMMAR FOCUS: Naturally create 2-3 situations in the scenario where the learner will need to use ${grammarFocus}. Design the character's questions and the scenario's context to elicit this grammar point.`;
+  }
+  if (vocabToReuse && vocabToReuse.length > 0) {
+    memoryInstruction += `\n\nVOCABULARY TO REINFORCE (the learner has practiced these words but needs more repetition — weave them naturally into the scenario vocabulary list and the character's likely phrases): ${vocabToReuse.join(", ")}.`;
   }
   const result = await ai.models.generateContent({
     model: "gemini-2.0-flash",
@@ -129,7 +133,7 @@ async function warmCache() {
 warmCache().catch(console.error);
 
 scenarioRouter.post("/", async (req, res) => {
-  const { intent, userId, difficulty, recentVocab, lastTip, force, grammarFocus } = req.body as {
+  const { intent, userId, difficulty, recentVocab, lastTip, force, grammarFocus, vocabToReuse } = req.body as {
     intent: string;
     userId: string;
     difficulty?: string;
@@ -137,11 +141,12 @@ scenarioRouter.post("/", async (req, res) => {
     lastTip?: string;
     force?: boolean;
     grammarFocus?: string;
+    vocabToReuse?: string[];
   };
   if (!intent) return res.status(400).json({ error: "intent required" });
 
   try {
-    const hasMemory = (recentVocab && recentVocab.length > 0) || !!lastTip || !!grammarFocus;
+    const hasMemory = (recentVocab && recentVocab.length > 0) || !!lastTip || !!grammarFocus || (vocabToReuse && vocabToReuse.length > 0);
     // Force-evict cache entry so a fresh one is generated and persisted
     if (force && !hasMemory) {
       const cacheKey = difficulty ? `${intent}::${difficulty}` : intent;
@@ -153,7 +158,7 @@ scenarioRouter.post("/", async (req, res) => {
     }
     // Bypass shared cache for personalized requests so user-specific context is always fresh
     const data = hasMemory
-      ? await _doGenerate(intent, difficulty, recentVocab, lastTip, grammarFocus) as Record<string, unknown>
+      ? await _doGenerate(intent, difficulty, recentVocab, lastTip, grammarFocus, vocabToReuse) as Record<string, unknown>
       : await generateAndCache(intent, difficulty) as Record<string, unknown>;
 
     res.json({

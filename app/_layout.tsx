@@ -33,6 +33,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="pre-session" options={{ headerShown: false }} />
             <Stack.Screen name="conversation" options={{ headerShown: false }} />
             <Stack.Screen name="session" options={{ headerShown: false }} />
           </Stack>

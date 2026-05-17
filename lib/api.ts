@@ -13,12 +13,13 @@ export async function generateScenario(
   difficulty?: string,
   memory?: { recentVocab?: string[]; lastTip?: string },
   grammarFocus?: string,
+  vocabToReuse?: string[],
 ): Promise<Scenario> {
   const base = getServerBase();
   const res = await fetch(`${base}/scenario`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ intent, userId, difficulty, ...memory, grammarFocus }),
+    body: JSON.stringify({ intent, userId, difficulty, ...memory, grammarFocus, vocabToReuse }),
   });
   if (!res.ok) throw new Error(`Scenario generation failed: ${res.status}`);
   return res.json();

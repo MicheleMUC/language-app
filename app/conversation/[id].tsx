@@ -260,7 +260,7 @@ function SessionReview({
 }
 
 export default function ConversationScreen() {
-  const { id, scenarioData } = useLocalSearchParams<{ id: string; scenarioData: string }>();
+  const { id, scenarioData, sessionGoal } = useLocalSearchParams<{ id: string; scenarioData: string; sessionGoal?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scenario: Scenario = JSON.parse(decodeURIComponent(scenarioData ?? "{}"));
@@ -278,7 +278,7 @@ export default function ConversationScreen() {
     ? { userContext: learnerProfile.userContext, vocabToReuse: learnerProfile.vocabToReuse, weaknessMap: learnerProfile.weaknessMap }
     : undefined;
 
-  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection }, learnerContext);
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection }, learnerContext, sessionGoal ?? undefined);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const newVocabulary = useMemo((): VocabItem[] =>
@@ -417,6 +417,11 @@ export default function ConversationScreen() {
             />
             <Text style={styles.logo}>L'Italiano</Text>
           </View>
+          {sessionGoal ? (
+            <View style={styles.goalPill}>
+              <Text style={styles.goalPillText} numberOfLines={1}>{sessionGoal.split("—")[0].split(".")[0].trim()}</Text>
+            </View>
+          ) : null}
           <View style={styles.statusPill}>
             <View style={[styles.statusDot, {
               backgroundColor: isTalking ? "#ff6d33" : isThinking ? "#7b5ea7" : isModelSpeaking ? "#dcc841" : isConnected ? "#4caf50" : "#594139"
@@ -598,6 +603,8 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#2a2a2a", borderWidth: 1, borderColor: "#594139" },
   logo: { fontSize: 20, fontWeight: "800", color: "#ffb59b" },
   statusPill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#201f1f", borderRadius: 50, paddingHorizontal: 12, paddingVertical: 6 },
+  goalPill: { backgroundColor: "rgba(255,109,51,0.12)", borderRadius: 50, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: "rgba(255,109,51,0.3)", maxWidth: 160 },
+  goalPillText: { fontSize: 11, fontWeight: "700", color: "#ff6d33", letterSpacing: 0.5 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 12, fontWeight: "700", color: "#e1bfb4" },
   main: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
