@@ -13,6 +13,7 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
   const [lastUserTranscript, setLastUserTranscript] = useState("");
   const [activeVocab, setActiveVocab] = useState<VocabItem | null>(null);
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const socketRef = useRef<ConversationSocket | null>(null);
   const startedRef = useRef(false); // guard against Strict Mode double-invocation
   const startTokenRef = useRef(0);
@@ -112,7 +113,8 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
           setStatus("active");
           break;
         case "error":
-          console.error("[conv] server error:", (msg as { type: "error"; message?: string }).message);
+          console.error("[conv] server error:", msg.message);
+          setErrorMessage(msg.message ?? "Connection error");
           setStatus("ended");
           break;
       }
@@ -203,6 +205,7 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
     lastUserTranscript,
     activeVocab,
     lastLatencyMs,
+    errorMessage,
     isModelSpeaking: playerStatus.playing,
     start,
     startTalking,

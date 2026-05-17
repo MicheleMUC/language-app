@@ -272,7 +272,7 @@ export default function ConversationScreen() {
   const [turnFeedback, setTurnFeedback] = useState<TurnFeedback | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection });
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection });
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const newVocabulary = useMemo((): VocabItem[] =>
@@ -544,7 +544,7 @@ export default function ConversationScreen() {
       </SafeAreaView>
 
       {/* Session review overlay */}
-      {isEnded && (
+      {isEnded && !errorMessage && (
         <SessionReview
           turns={turns}
           newVocabulary={newVocabulary}
@@ -553,6 +553,17 @@ export default function ConversationScreen() {
           onRepeat={handleRepeat}
           onHome={handleHome}
         />
+      )}
+
+      {/* Error overlay — shown instead of session review when WS fails */}
+      {isEnded && !!errorMessage && (
+        <View style={styles.errorOverlay}>
+          <Text style={styles.errorTitle}>Connessione interrotta</Text>
+          <Text style={styles.errorMessage}>{errorMessage}</Text>
+          <TouchableOpacity onPress={handleHome} style={styles.errorBtn} activeOpacity={0.85}>
+            <Text style={styles.errorBtnText}>Torna alla home</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {showSidekick && (
@@ -796,4 +807,24 @@ const styles = StyleSheet.create({
   patternGoodText: { flex: 1, fontSize: 13, color: "#66d17a", lineHeight: 19 },
   patternImproveDot: { fontSize: 13, color: "#dcc841", fontWeight: "700", marginTop: 1 },
   patternImproveText: { flex: 1, fontSize: 13, color: "#dcc841", lineHeight: 19 },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#131313",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  errorTitle: { fontSize: 20, fontWeight: "800", color: "#e5e2e1", textAlign: "center" },
+  errorMessage: { fontSize: 14, color: "#a88a80", textAlign: "center", lineHeight: 20 },
+  errorBtn: {
+    marginTop: 8,
+    backgroundColor: "#201f1f",
+    borderRadius: 50,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderWidth: 1,
+    borderColor: "#594139",
+  },
+  errorBtnText: { fontSize: 15, fontWeight: "700", color: "#e1bfb4" },
 });

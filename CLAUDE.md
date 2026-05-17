@@ -21,6 +21,13 @@ npm start          # Run compiled build (production)
 
 Both must run simultaneously during development. The frontend auto-discovers the backend via the Metro bundler's LAN IP — no manual URL configuration needed in dev.
 
+Or start both with one command from the root:
+```bash
+npm run dev    # concurrently starts Expo + backend (color-coded output)
+```
+
+Verify the backend is up: `curl http://localhost:3001/health` → `{"ok":true}`
+
 ### Environment variables
 - **Frontend** (`.env.local`): `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, optionally `EXPO_PUBLIC_SERVER_URL` / `EXPO_PUBLIC_WS_URL` (override the LAN auto-detect)
 - **Backend** (`server/.env`): `GEMINI_API_KEY` (direct) or `GOOGLE_CLOUD_PROJECT` (Vertex AI). Both are checked; API key takes priority.
@@ -31,6 +38,17 @@ There are no test commands — the project has no test suite beyond `server/test
 
 ### Two-process setup
 The app is split into a React Native frontend (Expo) and a Node.js backend (Express + WebSocket). They must run concurrently. The frontend never calls Gemini directly — all AI goes through the backend.
+
+### REST Endpoints
+
+| Endpoint | Method | Request Body | Response |
+|----------|--------|--------------|----------|
+| `/health` | GET | — | `{ok: true}` |
+| `/scenario` | POST | `{intent: string, force?: boolean}` | Scenario JSON |
+| `/sidekick` | POST | `{history: Turn[], question: string}` | `{answer: string}` |
+| `/feedback/turn` | POST | `{turn: string, level: string, feedbackLayers: FeedbackLayers}` | TurnFeedback |
+| `/feedback` | POST | `{transcript: Turn[], level: string}` | `{feedback: string}` |
+| `/ws` | WebSocket | `WsClientMessage` protocol (see `types/index.ts`) | Audio + transcript stream |
 
 ### LAN IP auto-detection
 `lib/api.ts` and `lib/websocket.ts` derive the backend host from `Constants.expoConfig?.hostUri`, which Expo Metro injects at build time. This means when running on a physical device, HTTP and WebSocket calls automatically target the dev machine's LAN IP at port 3001. Override with `EXPO_PUBLIC_SERVER_URL` / `EXPO_PUBLIC_WS_URL` for production.

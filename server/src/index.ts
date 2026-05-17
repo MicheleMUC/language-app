@@ -1,4 +1,10 @@
 import "dotenv/config";
+
+if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_CLOUD_PROJECT) {
+  console.error("ERROR: Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT in server/.env");
+  process.exit(1);
+}
+
 import express from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
