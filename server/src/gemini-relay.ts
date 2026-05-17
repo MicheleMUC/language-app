@@ -4,8 +4,14 @@ import { ai } from "./ai-client";
 
 type CapturedAudio = { data: string; mimeType: string };
 
+type LearnerCtx = {
+  userContext?: { name?: string; occupation?: string; topics_mentioned?: string[]; last_session?: string };
+  vocabToReuse?: Array<{ word: string; seen_count: number }>;
+  weaknessMap?: Record<string, number>;
+};
+
 type ClientMsg =
-  | { type: "start"; scenarioId: string; scenario: Record<string, unknown>; preferences?: { naturalCorrection?: boolean } }
+  | { type: "start"; scenarioId: string; scenario: Record<string, unknown>; preferences?: { naturalCorrection?: boolean }; learnerContext?: LearnerCtx; sessionGoal?: string }
   | { type: "talk_start" }
   | { type: "talk_end"; audio: CapturedAudio }
   | { type: "talk_cancel" }
@@ -79,7 +85,7 @@ function transcodeToPcm(audio: CapturedAudio): Promise<Buffer> {
   });
 }
 
-function buildSystemInstruction(scenario: Record<string, unknown>, naturalCorrection = true) {
+function buildSystemInstruction(scenario: Record<string, unknown>, naturalCorrection = true, learnerContext?: LearnerCtx, sessionGoal?: string) {
   const vocab = (scenario.vocabulary as Array<{ italian: string; english: string; example?: string }> ?? [])
     .map((v) => `  - ${v.italian} (${v.english})${v.example ? `: "${v.example}"` : ""}`)
     .join("\n");
@@ -92,6 +98,30 @@ function buildSystemInstruction(scenario: Record<string, unknown>, naturalCorrec
       : scenario.difficulty === "B1" || scenario.difficulty === "B2"
       ? "Use a mix of present, past (passato prossimo), and future tenses naturally."
       : "Use natural idiomatic Italian including subjunctive and regional expressions.";
+
+  let learnerBlock = "";
+  if (learnerContext) {
+    const ctx = learnerContext.userContext ?? {};
+    const lines: string[] = [];
+    if (ctx.name) lines.push(`- Name: ${ctx.name}`);
+    if (ctx.occupation) lines.push(`- Occupation: ${ctx.occupation}`);
+    if (ctx.topics_mentioned?.length) lines.push(`- Past topics discussed: ${ctx.topics_mentioned.slice(0, 8).join(", ")}`);
+    if (ctx.last_session) lines.push(`- Last session: ${ctx.last_session}`);
+
+    const vocabToReuse = (learnerContext.vocabToReuse ?? [])
+      .sort((a, b) => b.seen_count - a.seen_count)
+      .slice(0, 5)
+      .map((v) => v.word);
+    if (vocabToReuse.length) lines.push(`- Words to weave in naturally this session: ${vocabToReuse.join(", ")}`);
+
+    if (lines.length) {
+      learnerBlock = `\n\nLEARNER CONTEXT (remember throughout the conversation):\n${lines.join("\n")}`;
+    }
+  }
+
+  const goalBlock = sessionGoal
+    ? `\n\nLEARNER GOAL: The learner wants to "${sessionGoal}". Gently create natural opportunities to practice this.`
+    : "";
 
   return `You are ${scenario.characterName}. ${scenario.characterDescription}
 Setting: ${scenario.setting}
@@ -109,7 +139,7 @@ SCENARIO VOCABULARY - weave these in naturally when the topic arises:
 ${vocab || "  (none specified)"}
 
 PHRASES you might use naturally:
-${phrases || "(none specified)"}`;
+${phrases || "(none specified)"}${learnerBlock}${goalBlock}`;
 }
 
 export function handleConversationWs(ws: WebSocket) {
@@ -198,7 +228,12 @@ export function handleConversationWs(ws: WebSocket) {
           activeScenarioSockets.set(scenarioId, ws);
         }
 
-        const systemInstruction = buildSystemInstruction(msg.scenario, msg.preferences?.naturalCorrection ?? true);
+        const systemInstruction = buildSystemInstruction(
+          msg.scenario,
+          msg.preferences?.naturalCorrection ?? true,
+          msg.learnerContext,
+          msg.sessionGoal,
+        );
 
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

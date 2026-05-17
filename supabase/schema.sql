@@ -66,6 +66,21 @@ create table if not exists pregenerated_scenarios (
 
 create index if not exists pregen_user on pregenerated_scenarios (user_id);
 
+-- learner_profile: one row per user, updated after each session
+create table if not exists learner_profile (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  weakness_map jsonb not null default '{}',
+  strong_patterns text[] not null default '{}',
+  vocab_to_reuse jsonb not null default '[]',
+  user_context jsonb not null default '{}',
+  updated_at timestamptz not null default now(),
+  constraint learner_profile_user_unique unique (user_id),
+  constraint vocab_to_reuse_max_50 check (jsonb_array_length(vocab_to_reuse) <= 50)
+);
+
+create index if not exists learner_profile_user on learner_profile (user_id);
+
 -- Row Level Security (apply after enabling auth)
 -- alter table sessions enable row level security;
 -- create policy "users own sessions" on sessions for all
@@ -76,3 +91,7 @@ create index if not exists pregen_user on pregenerated_scenarios (user_id);
 -- alter table user_vocabulary enable row level security;
 -- create policy "users own vocab" on user_vocabulary for all
 --   using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
+-- alter table learner_profile enable row level security;
+-- create policy "users own profile" on learner_profile for all
+--   using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
+-- Note: server-side upserts use SUPABASE_SERVICE_ROLE_KEY to bypass RLS.

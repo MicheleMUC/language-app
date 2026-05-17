@@ -66,13 +66,14 @@ export async function requestTurnFeedback(
 export async function requestFeedback(
   turns: ConversationTurn[],
   scenario: { difficulty: string; characterName: string },
-  userLevel: string
+  userLevel: string,
+  userId: string,
 ): Promise<SessionFeedback> {
   const base = getServerBase();
   const res = await fetch(`${base}/feedback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ turns, scenario, userLevel }),
+    body: JSON.stringify({ turns, scenario, userLevel, userId }),
   });
   if (!res.ok) throw new Error(`Feedback failed: ${res.status}`);
   return res.json();

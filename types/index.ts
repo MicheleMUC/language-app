@@ -77,9 +77,49 @@ export interface CapturedAudio {
   mimeType: string;
 }
 
+// Learner profile types
+export type GrammarCategory =
+  | "passato_prossimo"
+  | "subjunctive"
+  | "gender_agreement"
+  | "pronoun_order"
+  | "future_tense"
+  | "conditional"
+  | "other";
+
+export interface VocabEntry {
+  word: string;
+  seen_count: number;
+}
+
+export type WeaknessMap = Partial<Record<GrammarCategory, number>>; // score 0-1, higher = stronger
+
+export interface UserContext {
+  name?: string;
+  occupation?: string;
+  topics_mentioned?: string[];
+  last_session?: string;
+  conversation_count?: number;
+}
+
+export interface LearnerProfile {
+  userId: string;
+  weaknessMap: WeaknessMap;
+  strongPatterns: string[];
+  vocabToReuse: VocabEntry[];
+  userContext: UserContext;
+  updatedAt: string;
+}
+
+export interface LearnerContext {
+  userContext: UserContext;
+  vocabToReuse: VocabEntry[];
+  weaknessMap: WeaknessMap;
+}
+
 // WebSocket message types between app and Cloud Run relay
 export type WsClientMessage =
-  | { type: "start"; scenarioId: string; scenario: Scenario; preferences?: { naturalCorrection?: boolean } }
+  | { type: "start"; scenarioId: string; scenario: Scenario; preferences?: { naturalCorrection?: boolean }; learnerContext?: LearnerContext; sessionGoal?: string }
   | { type: "talk_start" }
   | { type: "talk_end"; audio: CapturedAudio }
   | { type: "talk_cancel" }

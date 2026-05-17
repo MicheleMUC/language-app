@@ -2,11 +2,11 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { ConversationSocket } from "@/lib/websocket";
 import { useAudioCapture } from "./useAudioCapture";
-import type { ConversationTurn, Scenario, VocabItem, WsServerMessage } from "@/types";
+import type { ConversationTurn, LearnerContext, Scenario, VocabItem, WsServerMessage } from "@/types";
 
 type Status = "idle" | "connecting" | "active" | "thinking" | "talking" | "ended";
 
-export function useConversation(scenario: Scenario, preferences?: { naturalCorrection?: boolean }) {
+export function useConversation(scenario: Scenario, preferences?: { naturalCorrection?: boolean }, learnerContext?: LearnerContext, sessionGoal?: string) {
   const [status, setStatus] = useState<Status>("idle");
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [partialTranscript, setPartialTranscript] = useState("");
@@ -155,8 +155,8 @@ export function useConversation(scenario: Scenario, preferences?: { naturalCorre
       socket.close();
       return;
     }
-    socket.send({ type: "start", scenarioId: scenario.id, scenario, preferences });
-  }, [scenario, handleMessage]);
+    socket.send({ type: "start", scenarioId: scenario.id, scenario, preferences, learnerContext, sessionGoal });
+  }, [scenario, handleMessage, learnerContext, sessionGoal]);
 
   const startTalking = useCallback(async () => {
     if (!socketRef.current) return;

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Scenario, ConversationSession, VocabItem, SessionFeedback } from "@/types";
+import type { Scenario, ConversationSession, VocabItem, SessionFeedback, LearnerProfile, VocabEntry, WeaknessMap, UserContext } from "@/types";
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -198,6 +198,26 @@ export async function upsertPregenScenario(
 export async function deletePregenScenario(userId: string, intent: string): Promise<void> {
   if (!supabase) return;
   await supabase.from("pregenerated_scenarios").delete().eq("user_id", userId).eq("intent", intent);
+}
+
+// ── Learner profile ───────────────────────────────────────────────────────────
+
+export async function loadLearnerProfile(userId: string): Promise<LearnerProfile | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("learner_profile")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+  if (error || !data) return null;
+  return {
+    userId: data.user_id,
+    weaknessMap: (data.weakness_map ?? {}) as WeaknessMap,
+    strongPatterns: (data.strong_patterns ?? []) as string[],
+    vocabToReuse: (data.vocab_to_reuse ?? []) as VocabEntry[],
+    userContext: (data.user_context ?? {}) as UserContext,
+    updatedAt: data.updated_at,
+  };
 }
 
 // ── Cross-session memory ──────────────────────────────────────────────────────

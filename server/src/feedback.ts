@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { GoogleGenAI } from "@google/genai";
+import { updateLearnerProfile } from "./learner-profile";
 
 export const feedbackRouter = Router();
 
@@ -31,10 +32,11 @@ Rules:
 - Respond ONLY with valid JSON. No markdown, no code fences.`;
 
 feedbackRouter.post("/", async (req, res) => {
-  const { turns, scenario, userLevel } = req.body as {
+  const { turns, scenario, userLevel, userId } = req.body as {
     turns: Array<{ role: string; italian: string }>;
     scenario: { difficulty: string; characterName: string };
     userLevel: string;
+    userId?: string;
   };
 
   if (!turns?.length) return res.status(400).json({ error: "turns required" });
@@ -70,13 +72,22 @@ ${userTurns}`;
     const clean = raw.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    res.json({
+    const feedback = {
       praise: parsed.praise ?? "Ottimo lavoro con la conversazione!",
       tip: parsed.tip ?? "Continua a praticare ogni giorno.",
       corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
       patternsGood: Array.isArray(parsed.patternsGood) ? parsed.patternsGood : [],
       patternsToImprove: Array.isArray(parsed.patternsToImprove) ? parsed.patternsToImprove : [],
-    });
+    };
+
+    res.json(feedback);
+
+    // Fire-and-forget — profile update runs after response is sent
+    if (userId) {
+      updateLearnerProfile(userId, feedback, turns).catch((e) =>
+        console.error("[feedback] learner profile update failed:", e)
+      );
+    }
   } catch (e) {
     console.error("Feedback error:", e);
     res.status(500).json({ error: "Failed to generate feedback" });

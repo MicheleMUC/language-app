@@ -21,7 +21,8 @@ import { TurnFeedbackCard } from "@/components/TurnFeedbackCard";
 import { saveSession, upsertVocabulary, updateSessionFeedback } from "@/lib/supabase";
 import { requestFeedback, requestTurnFeedback } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Scenario, ConversationTurn, VocabItem, SessionFeedback, TurnFeedback } from "@/types";
+import { useLearnerProfile } from "@/hooks/useLearnerProfile";
+import type { Scenario, ConversationTurn, LearnerContext, VocabItem, SessionFeedback, TurnFeedback } from "@/types";
 
 function PulseRings() {
   const scale1 = useRef(new Animated.Value(1)).current;
@@ -266,13 +267,18 @@ export default function ConversationScreen() {
 
   const { user } = useAuth();
   const { level, feedbackLayers, loading: preferencesLoading } = usePreferences(user?.id);
+  const { profile: learnerProfile } = useLearnerProfile(user?.id);
   const [showSidekick, setShowSidekick] = useState(false);
   const [feedback, setFeedback] = useState<SessionFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [turnFeedback, setTurnFeedback] = useState<TurnFeedback | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection });
+  const learnerContext: LearnerContext | undefined = learnerProfile
+    ? { userContext: learnerProfile.userContext, vocabToReuse: learnerProfile.vocabToReuse, weaknessMap: learnerProfile.weaknessMap }
+    : undefined;
+
+  const { status, turns, partialTranscript, lastUserTranscript, activeVocab, lastLatencyMs, errorMessage, isModelSpeaking, start, startTalking, stopTalking, end } = useConversation(scenario, { naturalCorrection: feedbackLayers.naturalCorrection }, learnerContext);
   const { messages: sidekickMessages, loading: sidekickLoading, ask } = useSidekick(scenario, turns);
 
   const newVocabulary = useMemo((): VocabItem[] =>
@@ -327,7 +333,7 @@ export default function ConversationScreen() {
     const userTurnCount = currentTurns.filter((t) => t.role === "user").length;
     if (userTurnCount >= 1 && feedbackLayers.endSession) {
       setFeedbackLoading(true);
-      requestFeedback(currentTurns, scenario, level)
+      requestFeedback(currentTurns, scenario, level, userId)
         .then((fb) => {
           setFeedback(fb);
           if (sessionIdRef.current) {
